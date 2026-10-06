@@ -8,7 +8,7 @@ using Lumina.Excel.Sheets;
 
 namespace LevelingCompanion.Windows;
 
-/// <summary>Styled after the game's Companion window: the chocobo's panel, then Skills (the plan), Behaviour and Learned tabs.</summary>
+/// <summary>Styled after the game's Companion window: the chocobo's panel, then the Behaviour, Skills (the plan) and Learned tabs; Skills comes first while nothing is planned.</summary>
 public sealed class MainWindow : Window
 {
     private readonly Configuration config;
@@ -43,26 +43,39 @@ public sealed class MainWindow : Window
         this.DrawPanel(state);
         if (!ImGui.BeginTabBar("##tabs"))
             return;
-        if (ImGui.BeginTabItem("Skills"))
-        {
-            if (this.board.Draw(plan, state))
-            {
-                this.config.Save();
-                this.watcher.Poke();
-            }
-            ImGui.EndTabItem();
-        }
-        if (ImGui.BeginTabItem("Behaviour"))
-        {
-            this.behaviourTab.Draw();
-            ImGui.EndTabItem();
-        }
-        if (ImGui.BeginTabItem($"Learned ({plan.History.Count})"))
+        // Behaviour comes first, unless no skill is planned yet: then the plan is what needs doing.
+        bool planned = plan.Ranks.Count > 0;
+        if (planned)
+            this.DrawBehaviourTab();
+        this.DrawSkillsTab(plan, state);
+        if (!planned)
+            this.DrawBehaviourTab();
+        if (ImGui.BeginTabItem($"Learned ({plan.History.Count})###learned"))
         {
             DrawHistory(plan);
             ImGui.EndTabItem();
         }
         ImGui.EndTabBar();
+    }
+
+    private void DrawSkillsTab(CharacterPlan plan, CompanionState state)
+    {
+        if (!ImGui.BeginTabItem("Skills"))
+            return;
+        if (this.board.Draw(plan, state))
+        {
+            this.config.Save();
+            this.watcher.Poke();
+        }
+        ImGui.EndTabItem();
+    }
+
+    private void DrawBehaviourTab()
+    {
+        if (!ImGui.BeginTabItem("Behaviour"))
+            return;
+        this.behaviourTab.Draw();
+        ImGui.EndTabItem();
     }
 
     private void DrawPanel(CompanionState state)
