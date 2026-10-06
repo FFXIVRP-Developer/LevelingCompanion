@@ -28,6 +28,7 @@ public sealed class Plugin : IDalamudPlugin
         ECommonsMain.Init(pluginInterface, this);
 
         Configuration config = Svc.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        config.Migrate();
         this.learner = new Learner(new SkillPrompt(), config);
         this.behaviour = new Behaviour(config);
         this.watcher = new Watcher(config, this.learner, this.behaviour);

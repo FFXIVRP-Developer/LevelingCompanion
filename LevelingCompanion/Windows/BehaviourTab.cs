@@ -8,7 +8,7 @@ namespace LevelingCompanion.Windows;
 
 /// <summary>
 ///     The stance behaviour, laid out as: an on/off switch; a live card (the chocobo's stance, your HP bar with
-///     the threshold marked, and what the plugin wants); the rule in two lines with the threshold slider; the
+///     the threshold marked and dragged right on it, and what the plugin wants); the rule in two lines; the
 ///     four stances to keep otherwise, as cards; the last changes.
 /// </summary>
 internal sealed class BehaviourTab(Configuration config, Behaviour behaviour)
@@ -56,7 +56,7 @@ internal sealed class BehaviourTab(Configuration config, Behaviour behaviour)
     /// <summary>The chocobo's stance now, your HP against the threshold, and the stance the rule wants.</summary>
     private void DrawLiveCard()
     {
-        ImGui.BeginChild("##live", new Vector2(0, 92 * Scale), true, ImGuiWindowFlags.NoScrollbar);
+        ImGui.BeginChild("##live", new Vector2(0, 108 * Scale), true, ImGuiWindowFlags.NoScrollbar);
         float? health = Behaviour.HealthPercent();
         Stance? current = CompanionState.IsSummoned() ? Behaviour.Current() : null;
 
@@ -83,12 +83,16 @@ internal sealed class BehaviourTab(Configuration config, Behaviour behaviour)
         return current == wanted ? $"In the right stance · {pace}" : $"Switching to {Behaviour.Name(wanted)} · {pace}";
     }
 
-    /// <summary>Your HP as a bar, red below the threshold, with a gold marker where the threshold sits.</summary>
+    /// <summary>
+    ///     Your HP as a bar, red below the threshold, with a gold marker where the threshold sits. The bar is the
+    ///     threshold's control: drag the marker or click anywhere on the bar; the mouse wheel moves it by 1%.
+    /// </summary>
     private void DrawHealthBar(float? health, float width)
     {
         float height = 18 * Scale;
         Vector2 min = ImGui.GetCursorScreenPos();
         Vector2 max = min + new Vector2(width, height);
+        this.HandleThresholdInput(min, width, height);
         ImDrawListPtr draw = ImGui.GetWindowDrawList();
         draw.AddRectFilled(min, max, Theme.U32(new Vector4(0.08f, 0.07f, 0.06f, 1)), 4);
 
@@ -99,12 +103,39 @@ internal sealed class BehaviourTab(Configuration config, Behaviour behaviour)
 
         float x = min.X + width * config.HealBelowPercent / 100f;
         draw.AddLine(new Vector2(x, min.Y - 3), new Vector2(x, max.Y + 3), Theme.U32(Theme.Gold), 2 * Scale);
+        // A handle on the marker, so it reads as something to drag.
+        float k = 5 * Scale;
+        draw.AddTriangleFilled(new Vector2(x - k, min.Y - 3 - k), new Vector2(x + k, min.Y - 3 - k), new Vector2(x, min.Y - 3), Theme.U32(Theme.Gold));
+        draw.AddTriangleFilled(new Vector2(x - k, max.Y + 3 + k), new Vector2(x, max.Y + 3), new Vector2(x + k, max.Y + 3 + k), Theme.U32(Theme.Gold));
         draw.AddRect(min, max, Theme.U32(Theme.Alpha(Theme.Trim, 0.8f)), 4);
 
-        string label = health is { } h ? $"HP {h:0}%   ·   Healer below {config.HealBelowPercent}%" : "HP -";
+        string label = health is { } h ? $"HP {h:0}%   ·   Healer below {config.HealBelowPercent}%" : $"Healer below {config.HealBelowPercent}%";
         Vector2 size = ImGui.CalcTextSize(label);
         draw.AddText(min + new Vector2((width - size.X) / 2, (height - size.Y) / 2), Theme.U32(Theme.Text), label);
-        ImGui.Dummy(new Vector2(width, height));
+    }
+
+    /// <summary>Drag or click on the bar sets the threshold (1..99%); the wheel nudges it; saved when the drag ends.</summary>
+    private void HandleThresholdInput(Vector2 min, float width, float height)
+    {
+        float pad = 8 * Scale; // room for the marker's handles above and below
+        ImGui.SetCursorScreenPos(min - new Vector2(0, pad));
+        ImGui.InvisibleButton("##threshold", new Vector2(width, height + pad * 2));
+        ImGui.SetCursorScreenPos(min + new Vector2(0, height + pad));
+
+        int before = config.HealBelowPercent;
+        if (ImGui.IsItemActive())
+            config.HealBelowPercent = System.Math.Clamp((int)System.MathF.Round((ImGui.GetIO().MousePos.X - min.X) / width * 100), 1, 99);
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEw);
+            float wheel = ImGui.GetIO().MouseWheel;
+            if (wheel != 0)
+                config.HealBelowPercent = System.Math.Clamp(config.HealBelowPercent + (wheel > 0 ? 1 : -1), 1, 99);
+            if (!ImGui.IsItemActive())
+                ImGui.SetTooltip("Drag the gold marker (or click on the bar) to set when Healer stance starts. Mouse wheel: 1% steps.");
+        }
+        if (ImGui.IsItemDeactivated() || config.HealBelowPercent != before && !ImGui.IsItemActive())
+            config.Save();
     }
 
     /// <summary>The rule in two lines: below the threshold → Healer; otherwise → the chosen stance.</summary>
@@ -119,15 +150,11 @@ internal sealed class BehaviourTab(Configuration config, Behaviour behaviour)
         ImGui.AlignTextToFramePadding();
         ImGui.TextUnformatted("When my HP drops below");
         ImGui.SameLine();
-        int percent = config.HealBelowPercent;
-        ImGui.SetNextItemWidth(220 * Scale);
-        if (ImGui.SliderInt("##heal", ref percent, 1, 99, "%d%%"))
-        {
-            config.HealBelowPercent = percent;
-            config.Save();
-        }
+        ImGui.TextColored(Theme.Gold, $"{config.HealBelowPercent}%");
         ImGui.SameLine();
         ImGui.TextColored(Theme.Green, $"→ {Behaviour.Name(Stance.Healer)}");
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.Dim, "(drag the gold marker on the HP bar)");
 
         DrawStanceIcon(config.NormalStance, icon, true);
         ImGui.SameLine();

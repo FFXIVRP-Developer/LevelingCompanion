@@ -58,13 +58,13 @@ missing.
 
 The **Behaviour** tab switches the chocobo's stance by your own HP: below the percentage you set it orders Healer
 stance; at or above it, the stance you pick (Free, Attacker, Defender or Healer; the game's own stance commands,
-BuddyAction rows 4 to 7). It is off until you tick **Switch stance by my HP**. It acts only when the stance the game
+BuddyAction rows 4 to 7). It is on by default (threshold 75%) and acts only while the chocobo is actually out (time left on its summon and the chocobo in the world; a city sends it away but keeps the timer). It acts only when the stance the game
 reports (`CompanionInfo.ActiveCommand`) differs from the one wanted, never while you ride the chocobo, are mounted or
 busy, and orders the same stance again at most every 10 seconds.
 
 The tab, first in the window once a skill is planned (Skills comes first while nothing is): an ON/OFF switch; a live
-card with the chocobo's stance icon, your HP bar (red below the threshold, a gold marker at it) and whether the
-chocobo is in the wanted stance; the rule in two lines with the threshold slider; the four stances as cards (the kept
+card with the chocobo's stance icon, your HP bar (red below the threshold, a gold marker at it: drag the marker or click on the bar to set the threshold, mouse wheel for 1% steps) and whether the
+chocobo is in the wanted stance; the rule in two lines; the four stances as cards (the kept
 one framed in gold, the game's description on hover); and the last five changes, also logged.
 
 ## Server info bar
