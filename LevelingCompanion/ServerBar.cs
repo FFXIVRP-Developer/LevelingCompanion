@@ -18,7 +18,7 @@ namespace LevelingCompanion;
 /// <summary>
 ///     The plugin's entry in the server info bar, shown wherever a chocobo can be summoned (field areas) or
 ///     while one is out. Its icon is a chocobo: the game's own stance icon (a chocobo in the stance's colour)
-///     while summoned, the company chocobo greyed out while not. The bar only takes text, so the entry keeps
+///     while summoned; while not, Gysahl Greens (greyed when you have none), which a right click uses. The bar only takes text, so the entry keeps
 ///     room with spaces and the icon is drawn over it, each frame only while the entry is shown.
 ///     Left click opens the window, right click summons the chocobo with Gysahl Greens. Hover: the plan for
 ///     the next rank, nothing once the chocobo is at the top rank. The entry itself is refreshed by the
@@ -72,9 +72,11 @@ internal sealed class ServerBar : IDisposable
         }
 
         Stance? stance = state.Summoned ? Behaviour.Current() : null;
-        (this.icon, this.greyed) = (stance is { } s ? Behaviour.Icon(s) : CompanyChocoboIcon(), !state.Summoned);
-        // At the top rank there is nothing left to level: the stance icon alone.
-        string label = !state.Summoned ? "Chocobo" : state.Rank >= Skills.MaxRank ? "" : $"Rank {state.Rank}";
+        (this.icon, this.greyed) = state.Summoned
+            ? (stance is { } s ? Behaviour.Icon(s) : CompanyChocoboIcon(), false)
+            : (GreensIcon(), !HasGreens());
+        // Not summoned: the greens alone. At the top rank there is nothing left to level: the stance icon alone.
+        string label = !state.Summoned || state.Rank >= Skills.MaxRank ? "" : $"Rank {state.Rank}";
         string? tooltip = this.Tooltip(state);
         this.Set($"{this.icon}|{this.greyed}|{label}|{tooltip}", true, label, tooltip);
     }
@@ -142,12 +144,16 @@ internal sealed class ServerBar : IDisposable
         string body = picks.Count == 0
             ? "Nothing planned."
             : string.Join("\n", picks.Select(p => $"• {Skills.Name(p)} ({p.Tree} {p.Level}, {Skills.Cost(p.Level)} SP)"));
-        string summon = state.Summoned ? "" : "\n\nRight click: summon your chocobo.";
+        string summon = state.Summoned ? "" : HasGreens() ? "\n\nRight click: summon your chocobo." : "\n\nNo Gysahl Greens to summon your chocobo.";
         return $"Rank {next} plan\n{body}{summon}";
     }
 
     /// <summary>The company chocobo (Mount 1) icon.</summary>
     private static uint CompanyChocoboIcon() => Svc.Data.GetExcelSheet<Mount>().GetRowOrDefault(1)?.Icon ?? 0u;
+
+    private static uint GreensIcon() => Svc.Data.GetExcelSheet<Item>().GetRowOrDefault(GysahlGreens)?.Icon ?? 0u;
+
+    private static unsafe bool HasGreens() => InventoryManager.Instance()->GetInventoryItemCount(GysahlGreens) > 0;
 
     private static bool InField() =>
         Svc.Data.GetExcelSheet<TerritoryType>().GetRowOrDefault(Svc.ClientState.TerritoryType)?.TerritoryIntendedUse.RowId == Overworld;
@@ -156,7 +162,7 @@ internal sealed class ServerBar : IDisposable
     {
         if (CompanionState.IsSummoned())
             return;
-        if (InventoryManager.Instance()->GetInventoryItemCount(GysahlGreens) == 0)
+        if (!HasGreens())
         {
             Svc.Chat.PrintError("[Leveling Companion] No Gysahl Greens to summon your chocobo.");
             return;

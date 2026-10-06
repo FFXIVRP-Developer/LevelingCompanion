@@ -66,9 +66,11 @@ busy, and orders the same stance again at most every 10 seconds. Every change is
 ## Server info bar
 
 An entry in the server info bar appears wherever a chocobo can be summoned (field areas, TerritoryIntendedUse 1) or
-while one is out, once you have the companion. It reads `Rank N` (nothing at rank 20, just the icon) with a chocobo as its icon: the game's own stance
-icon, a chocobo in the stance's colour (BuddyAction icons: Free red-gold, Defender orange, Attacker dark red, Healer
-green), or `Chocobo` with the company chocobo greyed out while not summoned.
+while one is out, once you have the companion.
+
+- **Summoned:** a chocobo in the stance's colour (the game's own stance icons, BuddyAction: Free red-gold, Defender
+  orange, Attacker dark red, Healer green) and `Rank N`; at rank 20 the icon alone.
+- **Not summoned:** Gysahl Greens alone, saying a right click summons the chocobo; greyed when you have none.
 
 - **Left click:** opens the window.
 - **Right click:** summons the chocobo with Gysahl Greens when it is not out (a chat error when you have none).
