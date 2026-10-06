@@ -1,0 +1,9 @@
+{
+  "Author": "FFXIVRP-Developer",
+  "Name": "Leveling Companion",
+  "Punchline": "Learns your chocobo companion's skills by itself, following a plan you set rank by rank.",
+  "Description": "Plan which Defender, Attacker and Healer skills your chocobo learns at each rank, several per rank if you like. While your chocobo is summoned and has the skill points, the plugin learns the planned skills in order and keeps a record of what was learned. While your chocobo is not out it stays dormant.",
+  "InternalName": "LevelingCompanion",
+  "DalamudApiLevel": "15",
+  "Tags": [ "chocobo", "companion", "automation" ]
+}
