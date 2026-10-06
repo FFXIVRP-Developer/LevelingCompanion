@@ -21,6 +21,8 @@ public sealed class Plugin : IDalamudPlugin
 
     private readonly Behaviour behaviour;
 
+    private readonly ServerBar serverBar;
+
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
         ECommonsMain.Init(pluginInterface, this);
@@ -32,6 +34,8 @@ public sealed class Plugin : IDalamudPlugin
 
         this.mainWindow = new MainWindow(config, this.watcher, this.learner, this.behaviour);
         this.windows.AddWindow(this.mainWindow);
+        this.serverBar = new ServerBar(this.watcher.CurrentPlan, () => this.mainWindow.IsOpen = true);
+        this.watcher.Bar = this.serverBar;
 
         Svc.Commands.AddHandler(Command, new CommandInfo((_, _) => this.mainWindow.Toggle())
         {
@@ -47,6 +51,7 @@ public sealed class Plugin : IDalamudPlugin
         this.watcher.Dispose();
         this.learner.Dispose();
         this.behaviour.Dispose();
+        this.serverBar.Dispose();
         Svc.Commands.RemoveHandler(Command);
         Svc.PluginInterface.UiBuilder.Draw -= this.windows.Draw;
         Svc.PluginInterface.UiBuilder.OpenMainUi -= this.mainWindow.Toggle;

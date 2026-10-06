@@ -63,6 +63,19 @@ reports (`CompanionInfo.ActiveCommand`) differs from the one wanted, never while
 busy, and orders the same stance again at most every 10 seconds. Every change is logged and shown under
 **Last change**.
 
+## Server info bar
+
+An entry in the server info bar appears wherever a chocobo can be summoned (field areas, TerritoryIntendedUse 1) or
+while one is out, once you have the companion. It reads `Rank N` with the stance as its icon (Defender: tank,
+Attacker: DPS, Healer: healer, Free: any class), or `Chocobo` with no icon while not summoned.
+
+- **Left click:** opens the window.
+- **Right click:** summons the chocobo with Gysahl Greens when it is not out (a chat error when you have none).
+- **Hover:** the plan for the next rank; no tooltip once the chocobo is at rank 20.
+
+It is refreshed on the 3-second check and on zone changes, never per frame. Hide it like any entry in Dalamud's
+server info bar settings.
+
 ## Dormant unless the chocobo is out
 
 No per-frame work while idle: one check every 3 seconds reads only the summon timer. With the chocobo out, the

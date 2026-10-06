@@ -79,8 +79,12 @@ internal sealed class Watcher : IDisposable
         this.Schedule();
     }
 
+    /// <summary>The server info bar entry, refreshed on every check.</summary>
+    internal ServerBar? Bar { get; set; }
+
     private void Look()
     {
+        this.Bar?.Update();
         bool summoned = Svc.ClientState.IsLoggedIn && CompanionState.IsSummoned();
         this.behaviour.SetRunning(summoned && this.config.BehaviourEnabled);
         if (this.learner.Active)
