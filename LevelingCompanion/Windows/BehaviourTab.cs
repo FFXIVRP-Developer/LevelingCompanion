@@ -6,89 +6,204 @@ using ECommons.DalamudServices;
 
 namespace LevelingCompanion.Windows;
 
-/// <summary>The stance behaviour: on/off, the HP percentage for Healer stance, and the stance to keep otherwise.</summary>
+/// <summary>
+///     The stance behaviour, laid out as: an on/off switch; a live card (the chocobo's stance, your HP bar with
+///     the threshold marked, and what the plugin wants); the rule in two lines with the threshold slider; the
+///     four stances to keep otherwise, as cards; the last changes.
+/// </summary>
 internal sealed class BehaviourTab(Configuration config, Behaviour behaviour)
 {
     private static readonly Stance[] Stances = [Stance.Free, Stance.Attacker, Stance.Defender, Stance.Healer];
 
+    private static float Scale => ImGuiHelpers.GlobalScale;
+
     internal void Draw()
     {
-        ImGui.TextColored(Theme.Dim, "While your chocobo is out: your HP below the line → Healer stance; at or above it → the stance you choose.");
+        this.DrawSwitch();
+        ImGui.Spacing();
+        this.DrawLiveCard();
         ImGui.Spacing();
 
+        // Settings stay editable while off, only dimmed.
+        ImGui.PushStyleVar(ImGuiStyleVar.Alpha, config.BehaviourEnabled ? 1f : 0.55f);
+        this.DrawRule();
+        ImGui.Spacing();
+        this.DrawStances();
+        ImGui.PopStyleVar();
+
+        ImGui.Spacing();
+        this.DrawRecent();
+    }
+
+    private void DrawSwitch()
+    {
         bool enabled = config.BehaviourEnabled;
-        if (ImGui.Checkbox("Switch stance by my HP", ref enabled))
+        ImGui.PushStyleColor(ImGuiCol.Button, enabled ? Theme.Alpha(Theme.Green, 0.35f) : Theme.Panel);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, enabled ? Theme.Alpha(Theme.Green, 0.5f) : Theme.PanelHigh);
+        if (ImGui.Button(enabled ? "ON##behaviour" : "OFF##behaviour", new Vector2(64 * Scale, 0)))
         {
-            config.BehaviourEnabled = enabled;
+            config.BehaviourEnabled = !enabled;
             config.Save();
-            behaviour.SetRunning(enabled && CompanionState.IsSummoned());
+            behaviour.SetRunning(config.BehaviourEnabled && CompanionState.IsSummoned());
         }
-        ImGui.Spacing();
+        ImGui.PopStyleColor(2);
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.Gold, "Switch my chocobo's stance by my HP");
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.Dim, enabled ? "" : "  (off: the chocobo keeps whatever stance it has)");
+    }
 
-        ImGui.TextColored(Theme.Gold, "Healer stance when my HP is below");
+    /// <summary>The chocobo's stance now, your HP against the threshold, and the stance the rule wants.</summary>
+    private void DrawLiveCard()
+    {
+        ImGui.BeginChild("##live", new Vector2(0, 92 * Scale), true, ImGuiWindowFlags.NoScrollbar);
+        float? health = Behaviour.HealthPercent();
+        Stance? current = CompanionState.IsSummoned() ? Behaviour.Current() : null;
+
+        DrawStanceIcon(current, 64 * Scale, current != null);
+        ImGui.SameLine();
+        ImGui.BeginGroup();
+        ImGui.TextColored(Theme.Gold, current is { } c ? Behaviour.Name(c) : CompanionState.IsSummoned() ? "Stance unknown" : "Chocobo not summoned");
+        this.DrawHealthBar(health, ImGui.GetContentRegionAvail().X - 8 * Scale);
+        ImGui.TextColored(Theme.Dim, this.StatusLine(health, current));
+        ImGui.EndGroup();
+        ImGui.EndChild();
+    }
+
+    private string StatusLine(float? health, Stance? current)
+    {
+        if (!CompanionState.IsSummoned())
+            return "Nothing runs until your chocobo is out.";
+        if (!config.BehaviourEnabled)
+            return "Off.";
+        if (health is not { } hp)
+            return "";
+        Stance wanted = behaviour.Wanted(hp);
+        string pace = "checking 4×/s in combat, 1×/s out of it";
+        return current == wanted ? $"In the right stance · {pace}" : $"Switching to {Behaviour.Name(wanted)} · {pace}";
+    }
+
+    /// <summary>Your HP as a bar, red below the threshold, with a gold marker where the threshold sits.</summary>
+    private void DrawHealthBar(float? health, float width)
+    {
+        float height = 18 * Scale;
+        Vector2 min = ImGui.GetCursorScreenPos();
+        Vector2 max = min + new Vector2(width, height);
+        ImDrawListPtr draw = ImGui.GetWindowDrawList();
+        draw.AddRectFilled(min, max, Theme.U32(new Vector4(0.08f, 0.07f, 0.06f, 1)), 4);
+
+        float hp = health ?? 0;
+        bool low = health != null && hp < config.HealBelowPercent;
+        if (health != null)
+            draw.AddRectFilled(min, new Vector2(min.X + width * hp / 100f, max.Y), Theme.U32(low ? new Vector4(0.80f, 0.30f, 0.25f, 1) : new Vector4(0.35f, 0.70f, 0.30f, 1)), 4);
+
+        float x = min.X + width * config.HealBelowPercent / 100f;
+        draw.AddLine(new Vector2(x, min.Y - 3), new Vector2(x, max.Y + 3), Theme.U32(Theme.Gold), 2 * Scale);
+        draw.AddRect(min, max, Theme.U32(Theme.Alpha(Theme.Trim, 0.8f)), 4);
+
+        string label = health is { } h ? $"HP {h:0}%   ·   Healer below {config.HealBelowPercent}%" : "HP -";
+        Vector2 size = ImGui.CalcTextSize(label);
+        draw.AddText(min + new Vector2((width - size.X) / 2, (height - size.Y) / 2), Theme.U32(Theme.Text), label);
+        ImGui.Dummy(new Vector2(width, height));
+    }
+
+    /// <summary>The rule in two lines: below the threshold → Healer; otherwise → the chosen stance.</summary>
+    private void DrawRule()
+    {
+        ImGui.TextColored(Theme.Gold, "Rule");
+        ImGui.Separator();
+        float icon = 28 * Scale;
+
+        DrawStanceIcon(Stance.Healer, icon, true);
+        ImGui.SameLine();
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("When my HP drops below");
+        ImGui.SameLine();
         int percent = config.HealBelowPercent;
-        ImGui.SetNextItemWidth(320 * ImGuiHelpers.GlobalScale);
+        ImGui.SetNextItemWidth(220 * Scale);
         if (ImGui.SliderInt("##heal", ref percent, 1, 99, "%d%%"))
         {
             config.HealBelowPercent = percent;
             config.Save();
         }
-        ImGui.Spacing();
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.Green, $"→ {Behaviour.Name(Stance.Healer)}");
 
-        ImGui.TextColored(Theme.Gold, "Otherwise keep");
-        this.DrawStances();
-        ImGui.Spacing();
-        ImGui.Separator();
-        this.DrawStatus();
+        DrawStanceIcon(config.NormalStance, icon, true);
+        ImGui.SameLine();
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Otherwise");
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.Gold, $"→ {Behaviour.Name(config.NormalStance)}");
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.Dim, "(choose below)");
     }
 
+    /// <summary>The four stances as cards; the chosen one framed in gold.</summary>
     private void DrawStances()
     {
-        float icon = 48 * ImGuiHelpers.GlobalScale;
+        float gap = ImGui.GetStyle().ItemSpacing.X;
+        float width = (ImGui.GetContentRegionAvail().X - gap * 3) / 4;
+        float icon = 48 * Scale;
+        float height = icon + ImGui.GetTextLineHeightWithSpacing() * 3 + 16 * Scale;
+
         foreach (Stance stance in Stances)
         {
             if (stance != Stance.Free)
-                ImGui.SameLine(0, 16);
-            ImGui.BeginGroup();
-            Vector2 pos = ImGui.GetCursorScreenPos();
+                ImGui.SameLine();
             bool selected = config.NormalStance == stance;
-            if (ImGui.InvisibleButton($"##stance{stance}", new Vector2(icon + 8, icon + 8)))
+            Vector2 pos = ImGui.GetCursorScreenPos();
+            if (ImGui.InvisibleButton($"##stance{stance}", new Vector2(width, height)))
             {
                 config.NormalStance = stance;
                 config.Save();
             }
             bool hovered = ImGui.IsItemHovered();
+            if (hovered && Behaviour.Description(stance) is { Length: > 0 } description)
+                ImGui.SetTooltip(description);
+
             ImDrawListPtr draw = ImGui.GetWindowDrawList();
-            if (selected || hovered)
-                draw.AddRectFilled(pos, pos + new Vector2(icon + 8, icon + 8), Theme.U32(Theme.Alpha(Theme.Gold, selected ? 0.18f : 0.08f)), 6);
-            draw.AddImage(Svc.Texture.GetFromGameIcon(new GameIconLookup(Behaviour.Icon(stance))).GetWrapOrEmpty().Handle,
-                pos + new Vector2(4, 4), pos + new Vector2(4 + icon, 4 + icon), Vector2.Zero, Vector2.One, Theme.U32(selected ? Vector4.One : new Vector4(0.7f, 0.7f, 0.7f, 0.8f)));
-            draw.AddRect(pos + new Vector2(3, 3), pos + new Vector2(5 + icon, 5 + icon), Theme.U32(selected ? Theme.Gold : Theme.Alpha(Theme.Dim, 0.5f)), 5, ImDrawFlags.None, selected ? 2.5f : 1f);
-            ImGui.TextColored(selected ? Theme.Gold : Theme.Dim, Behaviour.Name(stance));
-            ImGui.EndGroup();
+            draw.AddRectFilled(pos, pos + new Vector2(width, height), Theme.U32(selected ? Theme.PanelHigh : hovered ? Theme.Alpha(Theme.PanelHigh, 0.6f) : Theme.Panel), 6);
+            draw.AddRect(pos, pos + new Vector2(width, height), Theme.U32(selected ? Theme.Gold : Theme.Alpha(Theme.Trim, 0.5f)), 6, ImDrawFlags.None, selected ? 2.5f : 1f);
+
+            Vector2 iconAt = pos + new Vector2((width - icon) / 2, 8 * Scale);
+            draw.AddImageRounded(IconHandle(stance), iconAt, iconAt + new Vector2(icon, icon), Vector2.Zero, Vector2.One,
+                Theme.U32(selected ? Vector4.One : new Vector4(0.75f, 0.75f, 0.75f, 0.85f)), 6);
+
+            string name = Behaviour.Name(stance);
+            Vector2 nameSize = ImGui.CalcTextSize(name);
+            draw.AddText(new Vector2(pos.X + (width - nameSize.X) / 2, iconAt.Y + icon + 6 * Scale), Theme.U32(selected ? Theme.Gold : Theme.Text), name);
+            string note = selected ? "kept above the line" : stance == Stance.Healer ? "always healing" : "click to keep";
+            Vector2 noteSize = ImGui.CalcTextSize(note);
+            draw.AddText(new Vector2(pos.X + (width - noteSize.X) / 2, iconAt.Y + icon + 6 * Scale + ImGui.GetTextLineHeightWithSpacing()), Theme.U32(Theme.Dim), note);
         }
     }
 
-    private void DrawStatus()
+    private void DrawRecent()
     {
-        float? health = Behaviour.HealthPercent();
-        Stance? current = Behaviour.Current();
-        ImGui.TextUnformatted($"Your HP: {(health is { } h ? $"{h:0}%" : "-")}");
-        ImGui.SameLine(0, 24);
-        ImGui.TextUnformatted($"Chocobo stance: {(current is { } c ? Behaviour.Name(c) : "-")}");
-        if (health is { } hp)
+        ImGui.TextColored(Theme.Gold, "Recent changes");
+        ImGui.Separator();
+        if (behaviour.Recent.Count == 0)
         {
-            ImGui.SameLine(0, 24);
-            ImGui.TextColored(Theme.Green, $"Wanted: {Behaviour.Name(behaviour.Wanted(hp))}");
+            ImGui.TextColored(Theme.Dim, "None yet.");
+            return;
         }
-
-        if (!CompanionState.IsSummoned())
-            ImGui.TextColored(Theme.Dim, "Chocobo not summoned: nothing runs.");
-        else if (!config.BehaviourEnabled)
-            ImGui.TextColored(Theme.Dim, "Off.");
-        else
-            ImGui.TextColored(behaviour.Running ? Theme.Green : Theme.Dim, behaviour.Running ? "Watching your HP (4 times a second in combat, once a second out of it)." : "Starts within a few seconds.");
-        if (behaviour.Last != "")
-            ImGui.TextColored(Theme.Dim, $"Last change: {behaviour.Last}");
+        foreach (string line in behaviour.Recent)
+            ImGui.TextColored(Theme.Dim, line);
     }
+
+    private static void DrawStanceIcon(Stance? stance, float size, bool lit)
+    {
+        uint icon = stance is { } s ? Behaviour.Icon(s) : 0;
+        if (icon == 0)
+        {
+            ImGui.Dummy(new Vector2(size, size));
+            return;
+        }
+        ImGui.Image(Svc.Texture.GetFromGameIcon(new GameIconLookup(icon)).GetWrapOrEmpty().Handle, new Vector2(size, size),
+            Vector2.Zero, Vector2.One, lit ? Vector4.One : new Vector4(0.5f, 0.5f, 0.5f, 0.7f));
+    }
+
+    private static ImTextureID IconHandle(Stance stance) =>
+        Svc.Texture.GetFromGameIcon(new GameIconLookup(Behaviour.Icon(stance))).GetWrapOrEmpty().Handle;
 }

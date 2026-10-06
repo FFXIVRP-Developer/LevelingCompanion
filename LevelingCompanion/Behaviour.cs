@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Dalamud.Game.ClientState.Conditions;
 using ECommons;
@@ -37,8 +38,8 @@ internal sealed class Behaviour(Configuration config) : IDisposable
 
     internal bool Running { get; private set; }
 
-    /// <summary>The last stance change ordered, for the window.</summary>
-    internal string Last { get; private set; } = "";
+    /// <summary>The last stance changes ordered, newest first, for the window.</summary>
+    internal List<string> Recent { get; } = [];
 
     /// <summary>The stance the game reports (CompanionInfo.ActiveCommand), when it is one of the four.</summary>
     internal static unsafe Stance? Current()
@@ -63,6 +64,9 @@ internal sealed class Behaviour(Configuration config) : IDisposable
 
     internal static string Name(Stance stance) =>
         Svc.Data.GetExcelSheet<BuddyAction>().GetRowOrDefault((uint)stance)?.Name.ExtractText() ?? stance.ToString();
+
+    internal static string Description(Stance stance) =>
+        Svc.Data.GetExcelSheet<BuddyAction>().GetRowOrDefault((uint)stance)?.Description.ExtractText() ?? "";
 
     internal static uint Icon(Stance stance) =>
         (uint)(Svc.Data.GetExcelSheet<BuddyAction>().GetRowOrDefault((uint)stance)?.Icon ?? 0);
@@ -132,8 +136,11 @@ internal sealed class Behaviour(Configuration config) : IDisposable
             return;
         actions->UseAction(ActionType.BuddyAction, (uint)stance);
         (this.ordered, this.orderedAt) = (stance, DateTime.Now);
-        this.Last = $"{DateTime.Now:HH:mm:ss} {Name(stance)} at {health:0}% HP (game reported {Current()?.ToString() ?? "another command"})";
-        Svc.Log.Info($"LevelingCompanion: {this.Last}");
+        string line = $"{DateTime.Now:HH:mm:ss}  {Name(stance)} at {health:0}% HP";
+        this.Recent.Insert(0, line);
+        if (this.Recent.Count > 5)
+            this.Recent.RemoveAt(5);
+        Svc.Log.Info($"LevelingCompanion: {line} (game reported {Current()?.ToString() ?? "another command"})");
     }
 
     private static unsafe bool Mounted()
