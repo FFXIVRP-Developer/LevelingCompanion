@@ -20,7 +20,7 @@ namespace LevelingCompanion;
 ///     while one is out. Its icon is a chocobo: the game's own stance icon (a chocobo in the stance's colour)
 ///     while summoned; while not, Gysahl Greens (greyed when you have none), which a right click uses. The bar only takes text, so the entry keeps
 ///     room with spaces and the icon is drawn over it, each frame only while the entry is shown.
-///     Left click opens the window, right click summons the chocobo with Gysahl Greens. Hover: the plan for
+///     Left click opens the window; right click opens the game's Companion window while the chocobo is out, else summons it with Gysahl Greens. Hover: the plan for
 ///     the next rank, nothing once the chocobo is at the top rank. The entry itself is refreshed by the
 ///     watcher's slow check and on zone changes.
 /// </summary>
@@ -53,7 +53,7 @@ internal sealed class ServerBar : IDisposable
         this.entry.OnClick = e =>
         {
             if (e.ClickType == MouseClickType.Right)
-                Summon();
+                SummonOrOpenCompanion();
             else
                 open();
         };
@@ -144,7 +144,7 @@ internal sealed class ServerBar : IDisposable
         string body = picks.Count == 0
             ? "Nothing planned."
             : string.Join("\n", picks.Select(p => $"• {Skills.Name(p)} ({p.Tree} {p.Level}, {Skills.Cost(p.Level)} SP)"));
-        string summon = state.Summoned ? "" : HasGreens() ? "\n\nRight click: summon your chocobo." : "\n\nNo Gysahl Greens to summon your chocobo.";
+        string summon = state.Summoned ? "\n\nRight click: Companion window." : HasGreens() ? "\n\nRight click: summon your chocobo." : "\n\nNo Gysahl Greens to summon your chocobo.";
         return $"Rank {next} plan\n{body}{summon}";
     }
 
@@ -158,10 +158,14 @@ internal sealed class ServerBar : IDisposable
     private static bool InField() =>
         Svc.Data.GetExcelSheet<TerritoryType>().GetRowOrDefault(Svc.ClientState.TerritoryType)?.TerritoryIntendedUse.RowId == Overworld;
 
-    private static unsafe void Summon()
+    /// <summary>Right click: the game's Companion window while the chocobo is out, else summon it.</summary>
+    private static unsafe void SummonOrOpenCompanion()
     {
         if (CompanionState.IsSummoned())
+        {
+            AgentModule.Instance()->GetAgentByInternalId(AgentId.Buddy)->Show();
             return;
+        }
         if (!HasGreens())
         {
             Svc.Chat.PrintError("[Leveling Companion] No Gysahl Greens to summon your chocobo.");
