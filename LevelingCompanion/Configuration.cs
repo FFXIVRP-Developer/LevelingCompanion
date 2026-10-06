@@ -29,6 +29,15 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Learn planned skills by itself. Off: the window still shows the plan and the status.</summary>
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Switch the chocobo's stance by your HP (Behaviour tab).</summary>
+    public bool BehaviourEnabled { get; set; } = false;
+
+    /// <summary>Your HP below this percentage: Healer stance.</summary>
+    public int HealBelowPercent { get; set; } = 50;
+
+    /// <summary>The stance at or above <see cref="HealBelowPercent" />.</summary>
+    public Stance NormalStance { get; set; } = Stance.Free;
+
     /// <summary>Content id -> that character's plan.</summary>
     public Dictionary<ulong, CharacterPlan> Characters { get; set; } = [];
 

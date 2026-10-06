@@ -8,18 +8,20 @@ using Lumina.Excel.Sheets;
 
 namespace LevelingCompanion.Windows;
 
-/// <summary>Styled after the game's Companion window: the chocobo's panel, then Skills (the plan) and Learned tabs.</summary>
+/// <summary>Styled after the game's Companion window: the chocobo's panel, then Skills (the plan), Behaviour and Learned tabs.</summary>
 public sealed class MainWindow : Window
 {
     private readonly Configuration config;
     private readonly Watcher watcher;
     private readonly Learner learner;
     private readonly SkillBoard board = new();
+    private readonly BehaviourTab behaviourTab;
 
-    internal MainWindow(Configuration config, Watcher watcher, Learner learner)
+    internal MainWindow(Configuration config, Watcher watcher, Learner learner, Behaviour behaviour)
         : base("Leveling Companion###LevelingCompanionMain")
     {
         (this.config, this.watcher, this.learner) = (config, watcher, learner);
+        this.behaviourTab = new BehaviourTab(config, behaviour);
         this.SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(780, 830), MaximumSize = new Vector2(2000, 2000) };
     }
 
@@ -48,6 +50,11 @@ public sealed class MainWindow : Window
                 this.config.Save();
                 this.watcher.Poke();
             }
+            ImGui.EndTabItem();
+        }
+        if (ImGui.BeginTabItem("Behaviour"))
+        {
+            this.behaviourTab.Draw();
             ImGui.EndTabItem();
         }
         if (ImGui.BeginTabItem($"Learned ({plan.History.Count})"))

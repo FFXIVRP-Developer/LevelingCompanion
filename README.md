@@ -54,11 +54,21 @@ the companion's rank at the time and when.
 It needs the companion ("My Little Chocobo") and its skills ("My Feisty Little Chocobo"); the window says which one is
 missing.
 
+## Behaviour
+
+The **Behaviour** tab switches the chocobo's stance by your own HP: below the percentage you set it orders Healer
+stance; at or above it, the stance you pick (Free, Attacker, Defender or Healer; the game's own stance commands,
+BuddyAction rows 4 to 7). It is off until you tick **Switch stance by my HP**. It acts only when the stance the game
+reports (`CompanionInfo.ActiveCommand`) differs from the one wanted, never while you ride the chocobo, are mounted or
+busy, and orders the same stance again at most every 10 seconds. Every change is logged and shown under
+**Last change**.
+
 ## Dormant unless the chocobo is out
 
 No per-frame work while idle: one check every 3 seconds reads only the summon timer. With the chocobo out, the
 companion is read and the plan consulted, and only when rank, SP or learned levels changed since the last answer.
-Per-frame work happens only while one skill is being learned, and stops with it.
+Per-frame work happens only while one skill is being learned, and stops with it. The stance behaviour checks your HP
+four times a second, only while the chocobo is out and the behaviour is on.
 
 ## Clearing
 
@@ -71,6 +81,9 @@ which refunds every SP.
 
 - The automatic click (built from one manual learn of Healer level 2) has not been seen running by itself yet.
 - The Skills tab being tab 1 of the Companion window.
+- `CompanionInfo.ActiveCommand` holding the current stance as its BuddyAction row (4 to 7): the Behaviour tab shows
+  "Chocobo stance"; if it stays "-" while a stance is set, the game keeps it elsewhere, and the 10-second re-order
+  limit keeps the plugin from spamming the command.
 
 ## Build and load
 

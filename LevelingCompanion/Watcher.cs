@@ -10,7 +10,7 @@ namespace LevelingCompanion;
 ///     Dormant by design: no per-frame work. One delayed check every few seconds reads only the summon timer;
 ///     with the chocobo out, it reads the companion and asks the planner, and only when the companion's state
 ///     changed since the last answer. The learner, which does run every frame, is started only for a skill the
-///     points cover and stops by itself.
+///     points cover and stops by itself. The stance behaviour runs only while the chocobo is out and it is on.
 /// </summary>
 internal sealed class Watcher : IDisposable
 {
@@ -18,15 +18,17 @@ internal sealed class Watcher : IDisposable
 
     private readonly Configuration config;
     private readonly Learner learner;
+    private readonly Behaviour behaviour;
     private readonly CancellationTokenSource stop = new();
 
     /// <summary>The companion state the last answer was for; the planner is not asked again until it changes.</summary>
     private (ulong Character, CompanionState State)? handled;
 
-    internal Watcher(Configuration config, Learner learner)
+    internal Watcher(Configuration config, Learner learner, Behaviour behaviour)
     {
-        this.config  = config;
-        this.learner = learner;
+        this.config    = config;
+        this.learner   = learner;
+        this.behaviour = behaviour;
         this.Schedule();
     }
 
@@ -79,9 +81,11 @@ internal sealed class Watcher : IDisposable
 
     private void Look()
     {
+        bool summoned = Svc.ClientState.IsLoggedIn && CompanionState.IsSummoned();
+        this.behaviour.SetRunning(summoned && this.config.BehaviourEnabled);
         if (this.learner.Active)
             return;
-        if (!Svc.ClientState.IsLoggedIn || !CompanionState.IsSummoned())
+        if (!summoned)
         {
             this.Dormant = true;
             this.Status  = "Dormant: no chocobo summoned.";

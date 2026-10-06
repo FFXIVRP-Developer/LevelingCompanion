@@ -19,15 +19,18 @@ public sealed class Plugin : IDalamudPlugin
 
     private readonly Watcher watcher;
 
+    private readonly Behaviour behaviour;
+
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
         ECommonsMain.Init(pluginInterface, this);
 
         Configuration config = Svc.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         this.learner = new Learner(new SkillPrompt(), config);
-        this.watcher = new Watcher(config, this.learner);
+        this.behaviour = new Behaviour(config);
+        this.watcher = new Watcher(config, this.learner, this.behaviour);
 
-        this.mainWindow = new MainWindow(config, this.watcher, this.learner);
+        this.mainWindow = new MainWindow(config, this.watcher, this.learner, this.behaviour);
         this.windows.AddWindow(this.mainWindow);
 
         Svc.Commands.AddHandler(Command, new CommandInfo((_, _) => this.mainWindow.Toggle())
@@ -43,6 +46,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         this.watcher.Dispose();
         this.learner.Dispose();
+        this.behaviour.Dispose();
         Svc.Commands.RemoveHandler(Command);
         Svc.PluginInterface.UiBuilder.Draw -= this.windows.Draw;
         Svc.PluginInterface.UiBuilder.OpenMainUi -= this.mainWindow.Toggle;
