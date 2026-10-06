@@ -55,6 +55,9 @@ internal sealed class Watcher : IDisposable
             this.config.Characters[id] = plan;
         }
         plan.Name = Svc.PlayerState.CharacterName;
+        // Nothing planned yet: the default plan (PlanDefaults), so a new character or profile starts with it.
+        if (PlanDefaults.FillFromDefault(plan, this.config.DefaultRanks))
+            this.config.Save();
         return plan;
     }
 

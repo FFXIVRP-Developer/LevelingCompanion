@@ -23,4 +23,14 @@
   <ItemGroup>
     <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- The icon Dalamud's plugin installer shows: a dev plugin's images\icon.png next to its DLL. -->
+    <Content Include="Images\icon.png" Link="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The plugin's rules tested outside the game (LevelingCompanion.Tests). -->
+    <InternalsVisibleTo Include="LevelingCompanion.Tests" />
+  </ItemGroup>
 </Project>

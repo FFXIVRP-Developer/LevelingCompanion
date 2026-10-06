@@ -2,6 +2,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using ECommons.DalamudServices;
 using Lumina.Excel.Sheets;
@@ -67,6 +68,18 @@ public sealed class MainWindow : Window
             this.config.Save();
             this.watcher.Poke();
         }
+        // The default plan: a character with nothing planned starts from it (and every profile these settings are copied to).
+        ImGui.Spacing();
+        ImGui.TextColored(Theme.Dim, PlanDefaults.Describe(this.config.DefaultRanks));
+        ImGui.SameLine();
+        using (ImRaii.Disabled(plan.Ranks.Count == 0))
+            if (ImGui.SmallButton("Use this plan as the default"))
+            {
+                PlanDefaults.UseAsDefault(this.config, plan);
+                this.config.Save();
+            }
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Characters with nothing planned start from a copy of this plan: new characters here, and every profile these settings are copied to.");
         ImGui.EndTabItem();
     }
 

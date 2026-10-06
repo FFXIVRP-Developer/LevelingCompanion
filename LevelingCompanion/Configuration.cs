@@ -42,6 +42,12 @@ public sealed class Configuration : IPluginConfiguration
     /// <summary>Content id -> that character's plan.</summary>
     public Dictionary<ulong, CharacterPlan> Characters { get; set; } = [];
 
+    /// <summary>
+    ///     The plan a character with nothing planned starts from (a copy): set with "Use this plan as the default" in the Skills
+    ///     tab. Copied with the settings to other characters and profiles, it gives each of them the same plan.
+    /// </summary>
+    public Dictionary<int, List<SkillRef>> DefaultRanks { get; set; } = [];
+
     public void Save() => Svc.PluginInterface.SavePluginConfig(this);
 
     /// <summary>
