@@ -1,37 +1,51 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Interface.Textures;
+using ECommons;
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 
 namespace LevelingCompanion;
 
 /// <summary>
 ///     The plugin's entry in the server info bar, shown wherever a chocobo can be summoned (field areas) or
-///     while one is out. Its icon is the stance: Defender = tank, Attacker = DPS, Healer = healer, Free = any
-///     class; no icon while not summoned. Left click opens the window, right click summons the chocobo with
-///     Gysahl Greens. Hover: the plan for the next rank, nothing once the chocobo is at the top rank.
-///     Refreshed by the watcher's slow check and on zone changes, never per frame.
+///     while one is out. Its icon is a chocobo: the game's own stance icon (a chocobo in the stance's colour)
+///     while summoned, the company chocobo greyed out while not. The bar only takes text, so the entry keeps
+///     room with spaces and the icon is drawn over it, each frame only while the entry is shown.
+///     Left click opens the window, right click summons the chocobo with Gysahl Greens. Hover: the plan for
+///     the next rank, nothing once the chocobo is at the top rank. The entry itself is refreshed by the
+///     watcher's slow check and on zone changes.
 /// </summary>
 internal sealed class ServerBar : IDisposable
 {
+    private const string Title = "Leveling Companion";
+
     private const uint GysahlGreens = 4868;
 
     /// <summary>TerritoryIntendedUse 1: the field areas, where companions can be summoned.</summary>
     private const uint Overworld = 1;
 
+    /// <summary>Room left in the text for the icon.</summary>
+    private const string IconRoom = "      ";
+
     private readonly IDtrBarEntry entry;
     private readonly Func<CharacterPlan?> plan;
     private string shown = "";
+    private uint icon;
+    private bool greyed, drawing;
 
     internal ServerBar(Func<CharacterPlan?> plan, System.Action open)
     {
         this.plan  = plan;
-        this.entry = Svc.DtrBar.Get("Leveling Companion");
+        this.entry = Svc.DtrBar.Get(Title);
         this.entry.Shown = false;
         this.entry.OnClick = e =>
         {
@@ -50,39 +64,68 @@ internal sealed class ServerBar : IDisposable
         bool show = state.Obtained && (state.Summoned || InField());
         if (!show)
         {
-            this.Set("", null, null, false);
+            this.Set("", false, "", null);
             return;
         }
 
         Stance? stance = state.Summoned ? Behaviour.Current() : null;
+        (this.icon, this.greyed) = (stance is { } s ? Behaviour.Icon(s) : CompanyChocoboIcon(), !state.Summoned);
         string label = state.Summoned ? $"Rank {state.Rank}" : "Chocobo";
         string? tooltip = this.Tooltip(state);
-        this.Set($"{stance}|{label}|{tooltip}", stance, label, true, tooltip);
+        this.Set($"{this.icon}|{this.greyed}|{label}|{tooltip}", true, label, tooltip);
     }
 
     public void Dispose()
     {
         Svc.ClientState.TerritoryChanged -= this.OnTerritoryChanged;
+        this.SetDrawing(false);
         this.entry.Remove();
     }
 
     private void OnTerritoryChanged(uint territory) => this.Update();
 
-    private void Set(string key, Stance? stance, string? label, bool show, string? tooltip = null)
+    private void Set(string key, bool show, string label, string? tooltip)
     {
+        this.SetDrawing(show);
         if (key == this.shown && this.entry.Shown == show)
             return;
         this.shown = key;
         this.entry.Shown = show;
         if (!show)
             return;
-
-        SeStringBuilder text = new();
-        if (stance is { } s)
-            text.AddIcon(Icon(s)).AddText(" ");
-        text.AddText(label ?? "");
-        this.entry.Text    = text.Build();
+        this.entry.Text    = new SeStringBuilder().AddText(IconRoom + label).Build();
         this.entry.Tooltip = tooltip == null ? null : new SeStringBuilder().AddText(tooltip).Build();
+    }
+
+    private void SetDrawing(bool draw)
+    {
+        if (draw == this.drawing)
+            return;
+        this.drawing = draw;
+        if (draw)
+            Svc.PluginInterface.UiBuilder.Draw += this.DrawIcon;
+        else
+            Svc.PluginInterface.UiBuilder.Draw -= this.DrawIcon;
+    }
+
+    /// <summary>The chocobo over the room kept at the start of the entry, as tall as the entry.</summary>
+    private unsafe void DrawIcon()
+    {
+        if (Svc.GameGui.GameUiHidden || !GenericHelpers.TryGetAddonByName("_DTR", out AtkUnitBase* bar) || !bar->IsVisible)
+            return;
+        IReadOnlyDtrBarEntry? read = this.entry as IReadOnlyDtrBarEntry ?? Svc.DtrBar.Entries.FirstOrDefault(e => e.Title == Title);
+        if (read is not { Shown: true, UserHidden: false })
+            return;
+
+        (Vector2 min, Vector2 max) = read.ScreenBounds;
+        float size = max.Y - min.Y;
+        if (size <= 0)
+            return;
+        Vector2 at = new(min.X + 2, min.Y);
+        Vector4 tint = this.greyed ? new Vector4(0.55f, 0.55f, 0.55f, 0.8f) : Vector4.One;
+        ImGui.GetForegroundDrawList().AddImageRounded(
+            Svc.Texture.GetFromGameIcon(new GameIconLookup(this.icon)).GetWrapOrEmpty().Handle,
+            at, at + new Vector2(size, size), Vector2.Zero, Vector2.One, ImGui.GetColorU32(tint), size * 0.2f);
     }
 
     /// <summary>The plan for the next rank; null once the chocobo is at the top rank.</summary>
@@ -92,21 +135,15 @@ internal sealed class ServerBar : IDisposable
             return null;
         int next = state.Rank + 1;
         List<SkillRef> picks = this.plan()?.Ranks.GetValueOrDefault(next) ?? [];
-        string head = $"Rank {next} plan";
         string body = picks.Count == 0
             ? "Nothing planned."
             : string.Join("\n", picks.Select(p => $"• {Skills.Name(p)} ({p.Tree} {p.Level}, {Skills.Cost(p.Level)} SP)"));
-        string summon = state.Summoned ? "" : "\nRight click: summon your chocobo.";
-        return $"{head}\n{body}\n\nLeft click: open Leveling Companion.{summon}";
+        string summon = state.Summoned ? "" : "\n\nRight click: summon your chocobo.";
+        return $"Rank {next} plan\n{body}{summon}";
     }
 
-    private static BitmapFontIcon Icon(Stance stance) => stance switch
-    {
-        Stance.Defender => BitmapFontIcon.Tank,
-        Stance.Attacker => BitmapFontIcon.DPS,
-        Stance.Healer   => BitmapFontIcon.Healer,
-        _               => BitmapFontIcon.AnyClass,
-    };
+    /// <summary>The company chocobo (Mount 1) icon.</summary>
+    private static uint CompanyChocoboIcon() => Svc.Data.GetExcelSheet<Mount>().GetRowOrDefault(1)?.Icon ?? 0u;
 
     private static bool InField() =>
         Svc.Data.GetExcelSheet<TerritoryType>().GetRowOrDefault(Svc.ClientState.TerritoryType)?.TerritoryIntendedUse.RowId == Overworld;
