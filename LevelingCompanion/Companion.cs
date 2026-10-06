@@ -34,8 +34,15 @@ internal readonly record struct CompanionState(
     internal static unsafe bool IsSummoned()
     {
         UIState* ui = UIState.Instance();
-        return ui != null && ui->Buddy.CompanionInfo.TimeLeft > 0;
+        return ui != null && Present(ref ui->Buddy.CompanionInfo);
     }
+
+    /// <summary>
+    ///     The chocobo is out: time left on its summon AND its object in the world. Entering a city sends it away
+    ///     but keeps the timer, so the timer alone reads "summoned" in Limsa.
+    /// </summary>
+    private static unsafe bool Present(ref CompanionInfo info) =>
+        info.TimeLeft > 0 && info.Companion != null && info.Companion->EntityId is not (0 or 0xE0000000);
 
     /// <summary>Name, EXP and summon time left: for the window only, kept out of the state the watcher compares.</summary>
     internal static unsafe (string Name, uint Exp, float TimeLeft) Details()
@@ -61,7 +68,7 @@ internal readonly record struct CompanionState(
         return new CompanionState(
             obtained,
             QuestManager.IsQuestComplete(SkillsQuest),
-            info.TimeLeft > 0,
+            Present(ref info),
             info.Rank,
             info.SkillPoints,
             info.Levels[(int)Tree.Defender],
