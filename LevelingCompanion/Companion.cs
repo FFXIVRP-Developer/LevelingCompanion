@@ -37,6 +37,16 @@ internal readonly record struct CompanionState(
         return ui != null && ui->Buddy.CompanionInfo.TimeLeft > 0;
     }
 
+    /// <summary>Name, EXP and summon time left: for the window only, kept out of the state the watcher compares.</summary>
+    internal static unsafe (string Name, uint Exp, float TimeLeft) Details()
+    {
+        UIState* ui = UIState.Instance();
+        if (ui == null)
+            return ("", 0, 0);
+        ref CompanionInfo info = ref ui->Buddy.CompanionInfo;
+        return (info.NameString, info.CurrentXP, info.TimeLeft);
+    }
+
     internal static unsafe CompanionState Read()
     {
         UIState* ui = UIState.Instance();

@@ -4,21 +4,34 @@ Dalamud plugin that learns your chocobo companion's skills for you, following a 
 
 ## The plan
 
-`/levelingcompanion` opens the window. The **Plan** tab lists ranks 1 to 20. Under each rank you add the skills to
-learn once the chocobo reaches it, as many as you like, in the order they should be learned. Each rank stands on its
-own: changing one rank never changes another. Plans are kept per character.
+`/levelingcompanion` opens the window, styled after the game's Companion window. The **Skills** tab is the plan, laid
+out like the game's Skills screen: Defender, Attacker and Healer side by side, ten skills each from level 1 down, with
+their icons, names and descriptions (levels 1, 4, 7 and 10 are actions; the rest are traits). The rank strip on top
+(1 to 20) picks which rank the board edits. Under each rank you click the skills to learn once the chocobo reaches it,
+as many as you like; the order you click is the order they are learned. Each rank stands on its own, and plans are
+kept per character.
 
-The game's rules, which the plan is checked against (from the game data, BuddySkill, and the game's own rules):
+What a skill shows at the chosen rank, and what a click does:
 
-- Three trees, Defender, Attacker and Healer, ten skills each. A tree's skills are learned in order.
-- The level-N skill of a tree costs N skill points (SP).
+- **learned** (gold): the chocobo knows it. Not selectable.
+- **rank N** (blue, earlier rank): already planned before this rank. Not selectable again.
+- **this rank** (green): planned here. A click removes it, together with the higher skills of its tree planned
+  anywhere, which would be left without it.
+- **available**: the next skill of its tree by this rank. A click adds it.
+- **rank N** (grey, later rank): a click moves it to this rank when its earlier skill is ready by now.
+- **locked**: its earlier skill is neither learned nor planned by this rank. A skill is never learned without the ones
+  before it.
+- **not enough SP**: the points earned do not cover it at this rank (or would leave a later rank short).
+
+The game's rules behind this (from the game data, BuddySkill, and the game's own rules):
+
+- A tree's skills are learned in order; the level-N skill costs N skill points (SP).
 - Reaching rank N grants N SP up to rank 10, then 10, 10, 10, 10, 10, 10, 11, 12, 13 and 14 SP (165 in all, enough
   for every skill of every tree).
 - Past rank 10, each rank needs a Thavnairian Onion fed at the stable to raise the cap.
 
-Each rank shows the SP it grants and the SP left once everything planned up to it is paid for. Problems are shown in
-red: a skill whose earlier level is not learned or planned by then, a skill planned twice, or more SP spent than earned
-by that rank.
+Each rank shows the SP it grants, the SP to spend and the SP left after it; the strip marks ranks with picks (green
+dot), ranks reached (gold) and ranks with a problem (red).
 
 ## What it does
 
@@ -27,15 +40,16 @@ keeps track of what is done: the game's own count of learned levels). A skill wh
 is passed over too, and the window says why. A skill the SP do not cover yet stops there, so a later rank never spends
 the points an earlier one is waiting for.
 
-To learn a skill the plugin opens the Companion window on its Skills tab, clicks the skill, and presses Yes on the
-game's "Spend N SP to acquire “skill”?" (Addon 4974), only when that prompt names the planned skill. It stops when the
-chocobo leaves or combat starts, never starts in combat or while occupied, and gives up after 60 s (it tries again when
-something changes, or on **Learn now**). Every skill it learns goes into the **Learned** tab with the rank it was
-planned for, the companion's rank at the time and when.
+To learn a skill the plugin opens the Companion window on its Skills tab and clicks the skill the way the window does:
+event 0 to the Buddy agent with `[14, tree, undefined]` (tree 0 Defender, 1 Attacker, 2 Healer; recorded in game).
+The game offers that tree's next skill, and the plugin presses Yes on "Spend N SP to acquire “skill”?" (Addon 4974)
+only when that prompt names the planned skill. No prompt within 3 s: it clicks again. It stops when the chocobo leaves
+or combat starts, never starts in combat or while occupied, and gives up after 60 s (it tries again when something
+changes, or on **Learn now**). Every skill it learns goes into the **Learned** tab with the rank it was planned for,
+the companion's rank at the time and when.
 
 It needs the companion ("My Little Chocobo") and its skills ("My Feisty Little Chocobo"); the window says which one is
 missing.
-
 ## Dormant unless the chocobo is out
 
 No per-frame work while idle: one check every 3 seconds reads only the summon timer. With the chocobo out, the
@@ -45,14 +59,10 @@ recording.
 
 ## Not verified yet
 
-- **The click on a skill.** What the Companion window sends for it is not documented. Until it is known the plugin
-  opens the Skills tab and tells you which skill to click, and presses Yes for you. To build the click in: open the
-  **Recorder** tab, **Start recording**, learn one skill by hand, **Stop recording**, and pass on the lines (also in the
-  Dalamud log as `LevelingCompanion recorder:`).
-- The Skills tab being tab 1 of the Companion window, and the order of the learned levels in the game's data
-  (`CompanionInfo.Levels`) being Defender, Attacker, Healer: the status line shows the three levels to compare with the
-  game's window.
-
+- The automatic click (built from one manual learn of Healer level 2) has not been seen running by itself yet.
+- The Skills tab being tab 1 of the Companion window.
+- The **Recorder** tab stays for looking into game changes: it logs what the Companion window sends, and its hooks
+  exist only while recording.
 ## Build and load
 
 ```

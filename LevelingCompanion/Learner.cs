@@ -21,12 +21,13 @@ internal sealed class Learner(SkillPrompt prompt, Configuration config) : IDispo
     private static readonly TimeSpan Step    = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan GiveUp  = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan Confirm = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan Reclick = TimeSpan.FromSeconds(3);
 
     private SkillRef skill;
     private int plannedRank;
     private CharacterPlan? plan;
-    private DateTime started, lastStep, confirmedAt;
-    private bool openedWindow, clickSent;
+    private DateTime started, lastStep, confirmedAt, clickedAt;
+    private bool openedWindow;
 
     internal bool Active { get; private set; }
 
@@ -38,7 +39,7 @@ internal sealed class Learner(SkillPrompt prompt, Configuration config) : IDispo
         if (this.Active)
             return;
         (this.skill, this.plannedRank, this.plan) = (target, rank, forPlan);
-        (this.started, this.confirmedAt, this.openedWindow, this.clickSent) = (DateTime.Now, default, false, false);
+        (this.started, this.confirmedAt, this.clickedAt, this.openedWindow) = (DateTime.Now, default, default, false);
         this.Active = true;
         this.Status = $"Learning {Skills.Name(target)}.";
         Svc.Framework.Update += this.OnUpdate;
@@ -74,6 +75,11 @@ internal sealed class Learner(SkillPrompt prompt, Configuration config) : IDispo
             this.plan!.History.Add(new LearnRecord(this.skill, this.plannedRank, state.Rank, DateTime.Now));
             config.Save();
             this.Stop($"Learned {Skills.Name(this.skill)} (planned for rank {this.plannedRank}).");
+            return;
+        }
+        if (state.Level(this.skill.Tree) != this.skill.Level - 1)
+        {
+            this.Stop($"Stopped: {Skills.Name(this.skill)} is not the next skill of {this.skill.Tree} any more.");
             return;
         }
         if (!state.Summoned || Svc.Condition[ConditionFlag.InCombat])
@@ -123,11 +129,11 @@ internal sealed class Learner(SkillPrompt prompt, Configuration config) : IDispo
             buddy->SetTab(SkillsTab);
             return;
         }
-        if (!this.clickSent)
+        if (DateTime.Now - this.clickedAt > Reclick) // first click, or no prompt came: click again
         {
-            this.clickSent = true;
-            this.Status = SkillClick.Send(buddy, this.skill)
-                ? $"Clicked {Skills.Name(this.skill)}; waiting for the prompt."
+            this.clickedAt = DateTime.Now;
+            this.Status = SkillClick.Send(this.skill)
+                ? $"Clicked {Skills.Name(this.skill)} ({this.skill.Tree} {this.skill.Level}); waiting for the prompt."
                 : $"Click {Skills.Name(this.skill)} ({this.skill.Tree} {this.skill.Level}) in the Skills tab; Yes is pressed for you.";
         }
     }
