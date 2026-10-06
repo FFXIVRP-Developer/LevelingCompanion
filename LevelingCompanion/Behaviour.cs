@@ -1,6 +1,6 @@
 using System;
+using System.Threading;
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Plugin.Services;
 using ECommons;
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -20,17 +20,20 @@ public enum Stance : uint
 
 /// <summary>
 ///     Your HP below the set percentage: the chocobo goes to Healer stance; at or above it, back to the chosen
-///     stance. Runs on the framework (four checks a second) only while the chocobo is summoned and the option
-///     is on; the watcher's slow check switches it on and off. A stance is ordered again at most every
+///     stance. Each check schedules the next one (no per-frame callback): four a second in combat, one a second
+///     out of it, only while the chocobo is summoned and the option is on; the watcher's slow check switches it
+///     on and off. A stance is ordered again at most every
 ///     <see cref="Reorder" />, so a stance the game does not report back cannot be spammed.
 /// </summary>
 internal sealed class Behaviour(Configuration config) : IDisposable
 {
-    private static readonly TimeSpan Step    = TimeSpan.FromMilliseconds(250);
-    private static readonly TimeSpan Reorder = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan InCombat    = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan OutOfCombat = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan Reorder     = TimeSpan.FromSeconds(10);
 
-    private DateTime lastStep, orderedAt;
+    private DateTime orderedAt;
     private Stance? ordered;
+    private CancellationTokenSource? loop;
 
     internal bool Running { get; private set; }
 
@@ -71,20 +74,41 @@ internal sealed class Behaviour(Configuration config) : IDisposable
             return;
         this.Running = run;
         this.ordered = null;
+        this.loop?.Cancel();
+        this.loop = null;
         if (run)
-            Svc.Framework.Update += this.OnUpdate;
-        else
-            Svc.Framework.Update -= this.OnUpdate;
+        {
+            this.loop = new CancellationTokenSource();
+            this.Schedule(this.loop.Token);
+        }
     }
 
     public void Dispose() => this.SetRunning(false);
 
-    private void OnUpdate(IFramework framework)
+    private void Schedule(CancellationToken token)
     {
-        if (DateTime.Now - this.lastStep < Step)
-            return;
-        this.lastStep = DateTime.Now;
+        TimeSpan delay = Svc.Condition[ConditionFlag.InCombat] ? InCombat : OutOfCombat;
+        Svc.Framework.RunOnTick(() => this.Tick(token), delay, cancellationToken: token);
+    }
 
+    private void Tick(CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+            return;
+        try
+        {
+            this.Check();
+        }
+        catch (Exception e)
+        {
+            Svc.Log.Error(e, "LevelingCompanion: stance check");
+        }
+        if (!token.IsCancellationRequested)
+            this.Schedule(token);
+    }
+
+    private void Check()
+    {
         if (!config.BehaviourEnabled || !CompanionState.IsSummoned())
         {
             this.SetRunning(false);

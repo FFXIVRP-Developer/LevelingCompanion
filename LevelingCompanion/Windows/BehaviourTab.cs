@@ -87,7 +87,7 @@ internal sealed class BehaviourTab(Configuration config, Behaviour behaviour)
         else if (!config.BehaviourEnabled)
             ImGui.TextColored(Theme.Dim, "Off.");
         else
-            ImGui.TextColored(behaviour.Running ? Theme.Green : Theme.Dim, behaviour.Running ? "Watching your HP (4 times a second)." : "Starts within a few seconds.");
+            ImGui.TextColored(behaviour.Running ? Theme.Green : Theme.Dim, behaviour.Running ? "Watching your HP (4 times a second in combat, once a second out of it)." : "Starts within a few seconds.");
         if (behaviour.Last != "")
             ImGui.TextColored(Theme.Dim, $"Last change: {behaviour.Last}");
     }

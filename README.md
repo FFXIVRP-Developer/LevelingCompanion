@@ -86,7 +86,8 @@ and on zone changes. Hide it like any entry in Dalamud's server info bar setting
 No per-frame work while idle: one check every 3 seconds reads only the summon timer. With the chocobo out, the
 companion is read and the plan consulted, and only when rank, SP or learned levels changed since the last answer.
 Per-frame work happens only while one skill is being learned, and stops with it. The stance behaviour checks your HP
-four times a second, only while the chocobo is out and the behaviour is on.
+four times a second in combat and once a second out of it, each check scheduling the next (no per-frame callback),
+only while the chocobo is out and the behaviour is on.
 
 ## Clearing
 
