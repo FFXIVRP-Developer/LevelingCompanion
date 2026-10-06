@@ -11,15 +11,18 @@ their icons, names and descriptions (levels 1, 4, 7 and 10 are actions; the rest
 as many as you like; the order you click is the order they are learned. Each rank stands on its own, and plans are
 kept per character.
 
+The plan is a whole plan from rank 1, built on its own: every skill can be planned whether the chocobo knows it
+already or not, and the SP checks count the plan only. A skill the chocobo knows carries a gold mark and the word
+**learned**; when learning, the plugin passes it over.
+
 What a skill shows at the chosen rank, and what a click does:
 
-- **learned** (gold): the chocobo knows it. Not selectable.
 - **rank N** (blue, earlier rank): already planned before this rank. Not selectable again.
 - **this rank** (green): planned here. A click removes it, together with the higher skills of its tree planned
   anywhere, which would be left without it.
 - **available**: the next skill of its tree by this rank. A click adds it.
 - **rank N** (grey, later rank): a click moves it to this rank when its earlier skill is ready by now.
-- **locked**: its earlier skill is neither learned nor planned by this rank. A skill is never learned without the ones
+- **locked**: its earlier skill is not planned by this rank. A skill is never learned without the ones
   before it.
 - **not enough SP**: the points earned do not cover it at this rank (or would leave a later rank short).
 

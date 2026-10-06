@@ -41,16 +41,14 @@ internal static class Planner
     }
 
     /// <summary>
-    ///     Per rank: the points left once every planned skill up to that rank is paid for (skills already learned
-    ///     but not planned count as paid first), and what is wrong with the rank: missing earlier levels,
-    ///     skills planned twice, or more points spent than earned by then.
+    ///     Per rank of the plan, taken on its own from rank 1 (what the chocobo knows now does not count): the
+    ///     points left once every planned skill up to that rank is paid for, and what is wrong with the rank:
+    ///     missing earlier levels, skills planned twice, or more points spent than earned by then.
     /// </summary>
-    internal static Dictionary<int, RankCheck> Check(CharacterPlan plan, CompanionState state)
+    internal static Dictionary<int, RankCheck> Check(CharacterPlan plan)
     {
-        HashSet<SkillRef> planned = plan.Ranks.Values.SelectMany(s => s).ToHashSet();
-        int spent = Skills.All().Where(s => state.Learned(s) && !planned.Contains(s)).Sum(s => Skills.Cost(s.Level));
-
-        int[] reached = Skills.Trees.Select(t => state.Level(t)).ToArray();
+        int spent = 0;
+        int[] reached = new int[Skills.Trees.Length];
         HashSet<SkillRef> seen = [];
         Dictionary<int, RankCheck> result = [];
         for (int rank = 1; rank <= Skills.MaxRank; rank++)

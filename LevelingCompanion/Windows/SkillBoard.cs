@@ -27,7 +27,7 @@ internal sealed class SkillBoard
             this.rank = System.Math.Clamp(state.Rank, 1, Skills.MaxRank);
 
         ImGui.TextColored(Theme.Dim, "1. Pick a rank.   2. Click the skills your chocobo should learn when it reaches it.   3. Summon your chocobo: it learns them by itself.");
-        Dictionary<int, RankCheck> checks = Planner.Check(plan, state);
+        Dictionary<int, RankCheck> checks = Planner.Check(plan);
         this.DrawRankStrip(plan, state, checks);
         bool changed = this.DrawClearButtons(plan);
         DrawRankSummary(plan, checks, this.rank);
@@ -138,8 +138,8 @@ internal sealed class SkillBoard
         ImGui.BeginGroup();
         ImGui.TextColored(Theme.Gold, tree.ToString());
         int learned = state.Level(tree);
-        int by = PlanEditor.LevelBy(plan, state, tree, this.rank);
-        ImGui.TextColored(Theme.Dim, by > learned ? $"Lv {learned} → {by} by rank {this.rank}" : $"Lv {learned}");
+        int by = PlanEditor.LevelBy(plan, tree, this.rank);
+        ImGui.TextColored(Theme.Dim, $"Learned Lv {learned} · plan Lv {by} by rank {this.rank}");
         ImGui.EndGroup();
         ImGui.Separator();
 
@@ -180,11 +180,17 @@ internal sealed class SkillBoard
         Vector2 iconMin = pos + new Vector2(4, 4);
         Vector2 iconMax = iconMin + new Vector2(icon, icon);
         draw.AddImage(Svc.Texture.GetFromGameIcon(new GameIconLookup(Skills.Icon(skill))).GetWrapOrEmpty().Handle, iconMin, iconMax, Vector2.Zero, Vector2.One, Theme.U32(tint));
-        draw.AddRect(iconMin - Vector2.One, iconMax + Vector2.One, Theme.U32(frame), 4, ImDrawFlags.None, cell.Status is SkillStatus.PlannedHere or SkillStatus.Learned ? 2.5f : 1.5f);
+        draw.AddRect(iconMin - Vector2.One, iconMax + Vector2.One, Theme.U32(frame), 4, ImDrawFlags.None, cell.Status == SkillStatus.PlannedHere ? 2.5f : 1.5f);
+        if (cell.Learned) // the chocobo knows it: a gold mark on the icon, still plannable
+        {
+            Vector2 mark = new(iconMax.X - 5, iconMin.Y + 5);
+            draw.AddCircleFilled(mark, 6, Theme.U32(Theme.Gold));
+            draw.AddCircle(mark, 6, Theme.U32(new Vector4(0.2f, 0.15f, 0.08f, 1)), 0, 1.5f);
+        }
 
         float x = iconMax.X + 8;
         draw.AddText(new Vector2(x, pos.Y + 5), Theme.U32(name), Skills.Name(skill));
-        draw.AddText(new Vector2(x, pos.Y + 5 + ImGui.GetTextLineHeight()), Theme.U32(Theme.Dim), $"Lv {skill.Level} · {Skills.Cost(skill.Level)} SP · {note}");
+        draw.AddText(new Vector2(x, pos.Y + 5 + ImGui.GetTextLineHeight()), Theme.U32(Theme.Dim), $"Lv {skill.Level} · {Skills.Cost(skill.Level)} SP · {note}{(cell.Learned ? " · learned" : "")}");
 
         if (hovered)
             Tooltip(cell);
@@ -193,7 +199,7 @@ internal sealed class SkillBoard
 
     private static (Vector4 Frame, Vector4 Tint, Vector4 Name, string Note) Look(SkillCell cell) => cell.Status switch
     {
-        SkillStatus.Learned        => (Theme.Gold, Vector4.One, Theme.Gold, "learned"),
+
         SkillStatus.PlannedHere    => (Theme.Green, Vector4.One, Theme.Green, "this rank"),
         SkillStatus.PlannedEarlier => (Theme.Blue, new Vector4(1, 1, 1, 0.6f), Theme.Blue, $"rank {cell.PlannedRank}"),
         SkillStatus.PlannedLater   => (Theme.Alpha(Theme.Blue, 0.6f), new Vector4(0.7f, 0.7f, 0.7f, 0.6f), Theme.Dim, $"rank {cell.PlannedRank}"),
@@ -204,7 +210,7 @@ internal sealed class SkillBoard
 
     private static Vector4 LineColor(SkillStatus status) => status switch
     {
-        SkillStatus.Learned                                  => Theme.Gold,
+
         SkillStatus.PlannedEarlier or SkillStatus.PlannedHere => Theme.Alpha(Theme.Green, 0.8f),
         _                                                    => Theme.Alpha(Theme.Dim, 0.4f),
     };
@@ -224,6 +230,8 @@ internal sealed class SkillBoard
         if (description != "")
             ImGui.TextUnformatted(description);
         ImGui.Separator();
+        if (cell.Learned)
+            ImGui.TextColored(Theme.Gold, "Your chocobo already knows this. You can still plan it; the plugin skips it when learning.");
         ImGui.TextColored(cell.Clickable ? Theme.Green : Theme.Yellow, cell.Why);
         ImGui.PopTextWrapPos();
         ImGui.EndTooltip();
