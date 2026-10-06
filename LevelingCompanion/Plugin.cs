@@ -19,8 +19,6 @@ public sealed class Plugin : IDalamudPlugin
 
     private readonly Watcher watcher;
 
-    private readonly ClickRecorder recorder = new();
-
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
         ECommonsMain.Init(pluginInterface, this);
@@ -29,7 +27,7 @@ public sealed class Plugin : IDalamudPlugin
         this.learner = new Learner(new SkillPrompt(), config);
         this.watcher = new Watcher(config, this.learner);
 
-        this.mainWindow = new MainWindow(config, this.watcher, this.learner, this.recorder);
+        this.mainWindow = new MainWindow(config, this.watcher, this.learner);
         this.windows.AddWindow(this.mainWindow);
 
         Svc.Commands.AddHandler(Command, new CommandInfo((_, _) => this.mainWindow.Toggle())
@@ -45,7 +43,6 @@ public sealed class Plugin : IDalamudPlugin
     {
         this.watcher.Dispose();
         this.learner.Dispose();
-        this.recorder.Dispose();
         Svc.Commands.RemoveHandler(Command);
         Svc.PluginInterface.UiBuilder.Draw -= this.windows.Draw;
         Svc.PluginInterface.UiBuilder.OpenMainUi -= this.mainWindow.Toggle;

@@ -55,15 +55,19 @@ missing.
 
 No per-frame work while idle: one check every 3 seconds reads only the summon timer. With the chocobo out, the
 companion is read and the plan consulted, and only when rank, SP or learned levels changed since the last answer.
-Per-frame work happens only while one skill is being learned, and stops with it. The recorder's hooks exist only while
-recording.
+Per-frame work happens only while one skill is being learned, and stops with it.
+
+## Clearing
+
+**Clear rank N** removes that rank's skills (and the higher skills of those trees planned later, which would be left
+without them). **Clear whole plan** (hold Ctrl and click) removes every planned skill. Neither touches what the chocobo
+already learned; to unlearn skills in game, use a Reagan Pepper (Grand Company quartermaster or Hunt billmaster),
+which refunds every SP.
 
 ## Not verified yet
 
 - The automatic click (built from one manual learn of Healer level 2) has not been seen running by itself yet.
 - The Skills tab being tab 1 of the Companion window.
-- The **Recorder** tab stays for looking into game changes: it logs what the Companion window sends, and its hooks
-  exist only while recording.
 
 ## Build and load
 

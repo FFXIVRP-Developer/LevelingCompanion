@@ -26,11 +26,12 @@ internal sealed class SkillBoard
         if (this.rank == 0)
             this.rank = System.Math.Clamp(state.Rank, 1, Skills.MaxRank);
 
+        ImGui.TextColored(Theme.Dim, "1. Pick a rank.   2. Click the skills your chocobo should learn when it reaches it.   3. Summon your chocobo: it learns them by itself.");
         Dictionary<int, RankCheck> checks = Planner.Check(plan, state);
         this.DrawRankStrip(plan, state, checks);
+        bool changed = this.DrawClearButtons(plan);
         DrawRankSummary(plan, checks, this.rank);
 
-        bool changed = false;
         float width = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 2) / 3;
         foreach (Tree tree in Skills.Trees)
         {
@@ -65,6 +66,39 @@ internal sealed class SkillBoard
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(RankTooltip(plan, checks, r, state));
         }
+    }
+
+    /// <summary>"Clear rank N" and "Clear whole plan" (Ctrl+click, so a stray click cannot wipe the plan). True when the plan changed.</summary>
+    private bool DrawClearButtons(CharacterPlan plan)
+    {
+        bool changed = false;
+        bool hasRank = plan.Ranks.ContainsKey(this.rank);
+        if (!hasRank)
+            ImGui.BeginDisabled();
+        if (ImGui.Button($"Clear rank {this.rank}"))
+        {
+            PlanEditor.ClearRank(plan, this.rank);
+            changed = true;
+        }
+        if (!hasRank)
+            ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Removes this rank's skills, and the higher skills of those trees planned at later ranks.");
+
+        ImGui.SameLine();
+        bool any = plan.Ranks.Count > 0;
+        if (!any)
+            ImGui.BeginDisabled();
+        if (ImGui.Button("Clear whole plan") && ImGui.GetIO().KeyCtrl)
+        {
+            plan.Ranks.Clear();
+            changed = true;
+        }
+        if (!any)
+            ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Hold Ctrl and click to remove every planned skill. Skills the chocobo already learned stay learned.");
+        return changed;
     }
 
     private static string RankTooltip(CharacterPlan plan, Dictionary<int, RankCheck> checks, int r, CompanionState state)

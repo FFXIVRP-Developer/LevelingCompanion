@@ -8,19 +8,18 @@ using Lumina.Excel.Sheets;
 
 namespace LevelingCompanion.Windows;
 
-/// <summary>Styled after the game's Companion window: the chocobo's panel, then Skills (the plan), Learned and Recorder tabs.</summary>
+/// <summary>Styled after the game's Companion window: the chocobo's panel, then Skills (the plan) and Learned tabs.</summary>
 public sealed class MainWindow : Window
 {
     private readonly Configuration config;
     private readonly Watcher watcher;
     private readonly Learner learner;
-    private readonly ClickRecorder recorder;
     private readonly SkillBoard board = new();
 
-    internal MainWindow(Configuration config, Watcher watcher, Learner learner, ClickRecorder recorder)
+    internal MainWindow(Configuration config, Watcher watcher, Learner learner)
         : base("Leveling Companion###LevelingCompanionMain")
     {
-        (this.config, this.watcher, this.learner, this.recorder) = (config, watcher, learner, recorder);
+        (this.config, this.watcher, this.learner) = (config, watcher, learner);
         this.SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(780, 830), MaximumSize = new Vector2(2000, 2000) };
     }
 
@@ -54,11 +53,6 @@ public sealed class MainWindow : Window
         if (ImGui.BeginTabItem($"Learned ({plan.History.Count})"))
         {
             DrawHistory(plan);
-            ImGui.EndTabItem();
-        }
-        if (ImGui.BeginTabItem("Recorder"))
-        {
-            this.DrawRecorder();
             ImGui.EndTabItem();
         }
         ImGui.EndTabBar();
@@ -138,23 +132,5 @@ public sealed class MainWindow : Window
             ImGui.SameLine();
             ImGui.TextUnformatted($"{record.Skill.Tree} {record.Skill.Level} · planned for rank {record.PlannedRank} · learned at rank {record.CompanionRank}");
         }
-    }
-
-    private void DrawRecorder()
-    {
-        ImGui.TextWrapped("Logs what the Companion window sends (Buddy agent events and window callbacks). Only needed to look into "
-                        + "a change in the game; its hooks exist only while recording.");
-        if (ImGui.Button(this.recorder.Recording ? "Stop recording" : "Start recording"))
-        {
-            if (this.recorder.Recording)
-                this.recorder.Stop();
-            else
-                this.recorder.Start();
-        }
-        ImGui.SameLine();
-        if (ImGui.Button("Copy"))
-            ImGui.SetClipboardText(string.Join("\n", this.recorder.Lines));
-        foreach (string line in this.recorder.Lines)
-            ImGui.TextUnformatted(line);
     }
 }

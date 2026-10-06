@@ -105,6 +105,16 @@ internal static class PlanEditor
         plan.Ranks = plan.Ranks.Where(r => r.Value.Count > 0).ToDictionary(r => r.Key, r => r.Value);
     }
 
+    /// <summary>Removes everything planned for <paramref name="rank" />, with the higher skills of those trees planned later.</summary>
+    internal static void ClearRank(CharacterPlan plan, int rank)
+    {
+        foreach (SkillRef skill in plan.Ranks.GetValueOrDefault(rank) ?? [])
+            foreach (List<SkillRef> skills in plan.Ranks.Values.Where(s => s != plan.Ranks[rank]))
+                skills.RemoveAll(s => s.Tree == skill.Tree && s.Level > skill.Level);
+        plan.Ranks.Remove(rank);
+        plan.Ranks = plan.Ranks.Where(r => r.Value.Count > 0).ToDictionary(r => r.Key, r => r.Value);
+    }
+
     private static string RemoveWhy(CharacterPlan plan, SkillRef skill)
     {
         List<string> above = plan.Ranks.Values.SelectMany(s => s)
