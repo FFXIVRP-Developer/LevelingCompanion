@@ -50,6 +50,7 @@ the companion's rank at the time and when.
 
 It needs the companion ("My Little Chocobo") and its skills ("My Feisty Little Chocobo"); the window says which one is
 missing.
+
 ## Dormant unless the chocobo is out
 
 No per-frame work while idle: one check every 3 seconds reads only the summon timer. With the chocobo out, the
@@ -63,6 +64,7 @@ recording.
 - The Skills tab being tab 1 of the Companion window.
 - The **Recorder** tab stays for looking into game changes: it logs what the Companion window sends, and its hooks
   exist only while recording.
+
 ## Build and load
 
 ```
