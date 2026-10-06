@@ -1,3 +1,4 @@
 [submodule "ECommons"]
 	path = ECommons
-	url = https://github.com/NightmareXIV/ECommons.git
+	url = https://github.com/FFXIVRP-Developer/ECommons.git
+	branch = excelpage-alias
