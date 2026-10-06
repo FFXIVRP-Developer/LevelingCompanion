@@ -36,6 +36,9 @@ internal sealed class ServerBar : IDisposable
     /// <summary>Room left in the text for the icon.</summary>
     private const string IconRoom = "      ";
 
+    /// <summary>The whole text when there is no label: just the icon's width.</summary>
+    private const string IconOnly = "     ";
+
     private readonly IDtrBarEntry entry;
     private readonly Func<CharacterPlan?> plan;
     private string shown = "";
@@ -70,7 +73,8 @@ internal sealed class ServerBar : IDisposable
 
         Stance? stance = state.Summoned ? Behaviour.Current() : null;
         (this.icon, this.greyed) = (stance is { } s ? Behaviour.Icon(s) : CompanyChocoboIcon(), !state.Summoned);
-        string label = state.Summoned ? $"Rank {state.Rank}" : "Chocobo";
+        // At the top rank there is nothing left to level: the stance icon alone.
+        string label = !state.Summoned ? "Chocobo" : state.Rank >= Skills.MaxRank ? "" : $"Rank {state.Rank}";
         string? tooltip = this.Tooltip(state);
         this.Set($"{this.icon}|{this.greyed}|{label}|{tooltip}", true, label, tooltip);
     }
@@ -93,7 +97,7 @@ internal sealed class ServerBar : IDisposable
         this.entry.Shown = show;
         if (!show)
             return;
-        this.entry.Text    = new SeStringBuilder().AddText(IconRoom + label).Build();
+        this.entry.Text    = new SeStringBuilder().AddText(label == "" ? IconOnly : IconRoom + label).Build();
         this.entry.Tooltip = tooltip == null ? null : new SeStringBuilder().AddText(tooltip).Build();
     }
 
