@@ -70,11 +70,11 @@ while one is out, once you have the companion.
 
 - **Summoned:** a chocobo in the stance's colour (the game's own stance icons, BuddyAction: Free red-gold, Defender
   orange, Attacker dark red, Healer green) and `Rank N`; at rank 20 the icon alone.
-- **Not summoned:** Gysahl Greens alone, saying a right click summons the chocobo; greyed when you have none.
+- **Not summoned:** Gysahl Greens alone, saying a click summons the chocobo; greyed when you have none.
 
-- **Left click:** opens the window.
-- **Right click:** opens the game's Companion window while the chocobo is out; summons it with Gysahl Greens when it
-  is not (a chat error when you have none).
+- **Left click:** summons the chocobo with Gysahl Greens when it is not out (a chat error when you have none); opens
+  the Leveling Companion window when it is.
+- **Right click:** always opens the game's Companion window.
 - **Hover:** the plan for the next rank; no tooltip once the chocobo is at rank 20.
 
 The bar only takes text, so the entry keeps room with spaces and the icon is drawn over it, each frame only while the
