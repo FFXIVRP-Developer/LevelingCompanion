@@ -41,6 +41,14 @@ internal static class Planner
     }
 
     /// <summary>
+    ///     What the plan wanted learned by the chocobo's rank and it has not learned (user, 2026-10-07: "not reset, just try your best
+    ///     to catch up with the plan. whats done is done"): in the plan's order, the order <see cref="Next" /> learns them in as points
+    ///     come. Skills learned off the plan are not undone; they only leave fewer points.
+    /// </summary>
+    internal static List<SkillRef> Behind(CharacterPlan plan, CompanionState state) =>
+        plan.Ranks.Where(r => r.Key <= state.Rank).OrderBy(r => r.Key).SelectMany(r => r.Value).Where(s => !state.Learned(s)).ToList();
+
+    /// <summary>
     ///     Per rank of the plan, taken on its own from rank 1 (what the chocobo knows now does not count): the
     ///     points left once every planned skill up to that rank is paid for, and what is wrong with the rank:
     ///     missing earlier levels, skills planned twice, or more points spent than earned by then.

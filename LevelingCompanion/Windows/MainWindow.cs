@@ -68,9 +68,33 @@ public sealed class MainWindow : Window
             this.config.Save();
             this.watcher.Poke();
         }
+        // Behind the plan (skills learned off it, or points short): caught up as points come, nothing reset.
+        System.Collections.Generic.List<SkillRef> behind = state.Obtained ? Planner.Behind(plan, state) : [];
+        if (behind.Count > 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextColored(Theme.Gold, $"Catching up with the plan: {behind.Count} skill(s) it wanted by rank {state.Rank} still to learn, next {Skills.Name(behind[0])}.");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Learned in the plan's order as skill points come. What the chocobo already learned stays learned (no reset); it only leaves fewer points.\n\n"
+                                 + string.Join("\n", behind.Select(s => $"• {Skills.Name(s)} ({s.Tree} {s.Level}, {Skills.Cost(s.Level)} SP)")));
+        }
+
         // The default plan: a character with nothing planned starts from it (and every profile these settings are copied to).
+        var defaults = PlanDefaults.Of(this.config);
         ImGui.Spacing();
-        ImGui.TextColored(Theme.Dim, PlanDefaults.Describe(this.config.DefaultRanks));
+        ImGui.TextColored(Theme.Dim, PlanDefaults.Describe(defaults) + (this.config.DefaultRanks.Count == 0 ? " (built in)" : ""));
+        ImGui.SameLine();
+        using (ImRaii.Disabled(PlanDefaults.Same(plan, defaults)))
+            if (ImGui.SmallButton("Apply the default plan"))
+            {
+                PlanDefaults.Apply(plan, defaults);
+                this.config.Save();
+                this.watcher.Poke();
+            }
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(PlanDefaults.Same(plan, defaults)
+                ? "This character's plan is the default plan."
+                : "Replaces this character's plan with the default one. What the chocobo already learned stays learned; it catches up with the plan as skill points come.");
         ImGui.SameLine();
         using (ImRaii.Disabled(plan.Ranks.Count == 0))
             if (ImGui.SmallButton("Use this plan as the default"))
