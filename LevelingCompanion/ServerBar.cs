@@ -16,10 +16,9 @@ using Lumina.Excel.Sheets;
 namespace LevelingCompanion;
 
 /// <summary>
-///     The plugin's entry in the server info bar, shown once you have the companion. Its icon is a chocobo:
-///     the game's own stance icon (a chocobo in the stance's colour) while summoned; in a place where it can be
-///     summoned (field areas), Gysahl Greens (greyed when you have none), which a left click uses; anywhere
-///     else, a sleeping chocobo (the company chocobo dimmed, with "z Z") and nothing more. The bar
+///     The plugin's entry in the server info bar, shown once you have the companion, only where it can be summoned
+///     (field areas) or while it is out (<see cref="Shows" />). Its icon: the game's own stance icon (a chocobo in the
+///     stance's colour) while summoned; otherwise Gysahl Greens (greyed when you have none), which a left click uses. The bar
 ///     only takes text, so the entry keeps room with spaces and the icon is drawn over it, each frame only
 ///     while the entry is shown. Left click: summons the chocobo when it is not out, else opens the plugin
 ///     window. Right click: always the game's Companion window. Hover: the plan for the next rank, nothing
@@ -45,7 +44,7 @@ internal sealed class ServerBar : IDisposable
     private readonly Func<CharacterPlan?> plan;
     private string shown = "";
     private uint icon;
-    private bool greyed, sleeping, drawing;
+    private bool greyed, drawing;
 
     internal ServerBar(Func<CharacterPlan?> plan, System.Action open)
     {
@@ -68,16 +67,9 @@ internal sealed class ServerBar : IDisposable
     internal void Update()
     {
         CompanionState state = Svc.ClientState.IsLoggedIn ? CompanionState.Read() : default;
-        if (!state.Obtained)
+        if (!Shows(state.Obtained, state.Summoned, InField()))
         {
             this.Set("", false, "", null);
-            return;
-        }
-        this.sleeping = !state.Summoned && !InField();
-        if (this.sleeping) // no chocobo can be summoned here: the sleeping chocobo alone
-        {
-            (this.icon, this.greyed) = (CompanyChocoboIcon(), false);
-            this.Set("sleeping", true, "", null);
             return;
         }
 
@@ -90,6 +82,12 @@ internal sealed class ServerBar : IDisposable
         string? tooltip = this.Tooltip(state);
         this.Set($"{this.icon}|{this.greyed}|{label}|{tooltip}", true, label, tooltip);
     }
+
+    /// <summary>
+    ///     Shown once you have the companion, only where it can be summoned (field areas) or while it is out (user, 2026-10-07:
+    ///     "the chocobo icon actually should only show in areas it can be summoned"; it was a sleeping chocobo everywhere else).
+    /// </summary>
+    internal static bool Shows(bool obtained, bool summoned, bool inField) => obtained && (summoned || inField);
 
     public void Dispose()
     {
@@ -138,28 +136,10 @@ internal sealed class ServerBar : IDisposable
         if (size <= 0)
             return;
         Vector2 at = new(min.X + 2, min.Y);
-        Vector4 tint = this.sleeping ? new Vector4(0.6f, 0.6f, 0.7f, 0.9f) : this.greyed ? new Vector4(0.55f, 0.55f, 0.55f, 0.8f) : Vector4.One;
-        ImDrawListPtr draw = ImGui.GetForegroundDrawList();
-        draw.AddImageRounded(
+        Vector4 tint = this.greyed ? new Vector4(0.55f, 0.55f, 0.55f, 0.8f) : Vector4.One;
+        ImGui.GetForegroundDrawList().AddImageRounded(
             Svc.Texture.GetFromGameIcon(new GameIconLookup(this.icon)).GetWrapOrEmpty().Handle,
             at, at + new Vector2(size, size), Vector2.Zero, Vector2.One, ImGui.GetColorU32(tint), size * 0.2f);
-        if (this.sleeping)
-            DrawZzz(draw, at, size);
-    }
-
-    /// <summary>A small "z" and a bigger "Z" rising from the chocobo's top right corner.</summary>
-    private static void DrawZzz(ImDrawListPtr draw, Vector2 at, float size)
-    {
-        uint color = ImGui.GetColorU32(new Vector4(0.85f, 0.92f, 1f, 1f));
-        uint shadow = ImGui.GetColorU32(new Vector4(0, 0, 0, 0.8f));
-        ImFontPtr font = ImGui.GetFont();
-        (string Text, float Scale, Vector2 Offset)[] letters = [("z", 0.45f, new(0.55f, 0.30f)), ("Z", 0.6f, new(0.72f, -0.05f))];
-        foreach ((string text, float scale, Vector2 offset) in letters)
-        {
-            Vector2 pos = at + offset * size;
-            draw.AddText(font, size * scale, pos + Vector2.One, shadow, text);
-            draw.AddText(font, size * scale, pos, color, text);
-        }
     }
 
     /// <summary>The plan for the next rank; null once the chocobo is at the top rank.</summary>
