@@ -30,6 +30,7 @@ internal static class GreensIcon
         (int w, int h) = (tex.Header.Width, tex.Header.Height);
         byte[] px = tex.ImageData.ToArray(); // B, G, R, A
         ClearTile(px, w, h);
+        IconOutline.Add(px, w, h, IconOutline.RadiusFor(w));
         return Svc.Texture.CreateFromRaw(RawImageSpecification.Bgra32(w, h), px);
     }
 
