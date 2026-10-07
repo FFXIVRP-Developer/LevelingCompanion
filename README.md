@@ -98,7 +98,7 @@ TerritoryIntendedUse 1) or while it is out. Anywhere else (cities, inns, housing
 
 - **Summoned:** a chocobo in the stance's colour (the game's own stance icons, BuddyAction: Free red-gold, Defender
   orange, Attacker dark red, Healer green) and `Rank N`; at rank 20 the icon alone.
-- **Not summoned:** Gysahl Greens alone, saying a click summons the chocobo; greyed when you have none.
+- **Not summoned:** Gysahl Greens alone (the game's own icon with its grey tile cleared, so only the greens show), saying a click summons the chocobo; greyed when you have none.
 
 - **Left click:** summons the chocobo with Gysahl Greens when it is not out (a chat error when you have none); opens
   the Leveling Companion window when it is.

@@ -18,7 +18,7 @@ namespace LevelingCompanion;
 /// <summary>
 ///     The plugin's entry in the server info bar, shown once you have the companion, only where it can be summoned
 ///     (field areas) or while it is out (<see cref="Shows" />). Its icon: the game's own stance icon (a chocobo in the
-///     stance's colour) while summoned; otherwise Gysahl Greens (greyed when you have none), which a left click uses. The bar
+///     stance's colour) while summoned; otherwise Gysahl Greens without their grey tile (GreensIcon; greyed when you have none), which a left click uses. The bar
 ///     only takes text, so the entry keeps room with spaces and the icon is drawn over it, each frame only
 ///     while the entry is shown. Left click: summons the chocobo when it is not out, else opens the plugin
 ///     window. Right click: always the game's Companion window. Hover: the plan for the next rank, nothing
@@ -44,12 +44,14 @@ internal sealed class ServerBar : IDisposable
     private readonly Func<CharacterPlan?> plan;
     private string shown = "";
     private uint icon;
-    private bool greyed, drawing;
+    private bool greyed, drawing, greens;
+    private readonly Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap? greensPicture;
 
     internal ServerBar(Func<CharacterPlan?> plan, System.Action open)
     {
         this.plan  = plan;
         this.entry = Svc.DtrBar.Get(Title);
+        this.greensPicture = GreensIcon.Load(GysahlGreens);
         this.entry.Shown = false;
         this.entry.OnClick = e =>
         {
@@ -74,13 +76,13 @@ internal sealed class ServerBar : IDisposable
         }
 
         Stance? stance = state.Summoned ? Behaviour.Current() : null;
-        (this.icon, this.greyed) = state.Summoned
-            ? (stance is { } s ? Behaviour.Icon(s) : CompanyChocoboIcon(), false)
-            : (GreensIcon(), !HasGreens());
+        (this.icon, this.greyed, this.greens) = state.Summoned
+            ? (stance is { } s ? Behaviour.Icon(s) : CompanyChocoboIcon(), false, false)
+            : (GreensIconId(), !HasGreens(), true);
         // Not summoned: the greens alone. At the top rank there is nothing left to level: the stance icon alone.
         string label = !state.Summoned || state.Rank >= Skills.MaxRank ? "" : $"Rank {state.Rank}";
         string? tooltip = this.Tooltip(state);
-        this.Set($"{this.icon}|{this.greyed}|{label}|{tooltip}", true, label, tooltip);
+        this.Set($"{this.icon}|{this.greyed}|{this.greens}|{label}|{tooltip}", true, label, tooltip);
     }
 
     /// <summary>
@@ -93,6 +95,7 @@ internal sealed class ServerBar : IDisposable
     {
         Svc.ClientState.TerritoryChanged -= this.OnTerritoryChanged;
         this.SetDrawing(false);
+        this.greensPicture?.Dispose();
         this.entry.Remove();
     }
 
@@ -137,6 +140,12 @@ internal sealed class ServerBar : IDisposable
             return;
         Vector2 at = new(min.X + 2, min.Y);
         Vector4 tint = this.greyed ? new Vector4(0.55f, 0.55f, 0.55f, 0.8f) : Vector4.One;
+        // The greens without their grey tile (user, 2026-10-07: "the exact same icon but without background").
+        if (this.greens && this.greensPicture is { } picture)
+        {
+            ImGui.GetForegroundDrawList().AddImage(picture.Handle, at, at + new Vector2(size, size), Vector2.Zero, Vector2.One, ImGui.GetColorU32(tint));
+            return;
+        }
         ImGui.GetForegroundDrawList().AddImageRounded(
             Svc.Texture.GetFromGameIcon(new GameIconLookup(this.icon)).GetWrapOrEmpty().Handle,
             at, at + new Vector2(size, size), Vector2.Zero, Vector2.One, ImGui.GetColorU32(tint), size * 0.2f);
@@ -159,7 +168,7 @@ internal sealed class ServerBar : IDisposable
     /// <summary>The company chocobo (Mount 1) icon.</summary>
     private static uint CompanyChocoboIcon() => Svc.Data.GetExcelSheet<Mount>().GetRowOrDefault(1)?.Icon ?? 0u;
 
-    private static uint GreensIcon() => Svc.Data.GetExcelSheet<Item>().GetRowOrDefault(GysahlGreens)?.Icon ?? 0u;
+    private static uint GreensIconId() =>Svc.Data.GetExcelSheet<Item>().GetRowOrDefault(GysahlGreens)?.Icon ?? 0u;
 
     private static unsafe bool HasGreens() => InventoryManager.Instance()->GetInventoryItemCount(GysahlGreens) > 0;
 
