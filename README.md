@@ -36,6 +36,30 @@ The game's rules behind this (from the game data, BuddySkill, and the game's own
 Each rank shows the SP it grants, the SP to spend and the SP left after it; the strip marks ranks with picks (green
 dot), ranks reached (gold) and ranks with a problem (red).
 
+### The default plan
+
+A character with nothing planned starts from the default plan. Built in (2026-10-07), every tree to 10 by rank 20:
+
+| Ranks | Skills |
+|---|---|
+| 1–8 | Healer 1 to 8, one a rank |
+| 9 | Attacker 1, 2, 3 |
+| 10 | Attacker 4, Defender 1, 2, 3 |
+| 11 | Defender 4, Attacker 5 |
+| 12–15 | Attacker 6 and 7, then 8, 9, 10 |
+| 16–19 | Defender 5 and 6, 7, 8 and 9, 10 |
+| 20 | Healer 9, 10 |
+
+**Use this plan as the default** (Skills tab) saves a character's plan as the default in these settings instead; the
+built-in one is used while none is saved. **Apply the default plan** replaces the character's plan with the default
+whenever you want (greyed while the plan already is the default).
+
+### Behind the plan
+
+Skills the chocobo learned off the plan stay learned: nothing is reset. They only leave fewer points, so the plan's
+skills come later. While the chocobo is behind (skills the plan wanted by its rank that it has not learned), the Skills
+tab says how many and which comes next, and the plugin learns them in the plan's order as points come.
+
 ## What it does
 
 Ranks are taken in order and skills in the order listed. A skill already learned is passed over (that is how the plan
